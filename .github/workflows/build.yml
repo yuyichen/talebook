@@ -81,14 +81,47 @@ jobs:
             ${{ steps.prep.outputs.build_args }}
           outputs: type=docker,dest=/tmp/talebook-image-arm64.tar
 
-      - name: Combine Images
+      - name: Export Docker Images
         if: startsWith(github.ref, 'refs/tags/')
         run: |
           mkdir -p /tmp/release
-          cp /tmp/talebook-image-amd64.tar /tmp/release/talebook-${{ steps.prep.outputs.version }}-amd64.docker.tar
-          cp /tmp/talebook-image-arm64.tar /tmp/release/talebook-${{ steps.prep.outputs.version }}-arm64.docker.tar
+
+          # Load and save images with proper names
+          docker load -i /tmp/talebook-image-amd64.tar
+          docker save -o /tmp/release/talebook-${{ steps.prep.outputs.version }}-amd64.docker.tar codenai/talebook:${{ steps.prep.outputs.version }}-amd64
+
+          docker load -i /tmp/talebook-image-arm64.tar
+          docker save -o /tmp/release/talebook-${{ steps.prep.outputs.version }}-arm64.docker.tar codenai/talebook:${{ steps.prep.outputs.version }}-arm64
+
+          # Create a compressed archive containing all images
           cd /tmp/release
           tar -czf ../talebook-${{ steps.prep.outputs.version }}-docker-images.tar.gz *.docker.tar
+
+          # Create a simple README for the release
+          cat > /tmp/README.md << EOF
+          # Talebook Docker Images
+
+          This release contains Docker images for Talebook, built for multiple platforms.
+
+          ## Images included
+
+          - \`codenai/talebook:${{ steps.prep.outputs.version }}-amd64\` - for AMD64/Intel 64-bit platforms
+          - \`codenai/talebook:${{ steps.prep.outputs.version }}-arm64\` - for ARM 64-bit platforms
+
+          ## How to use
+
+          1. Download the \`talebook-${{ steps.prep.outputs.version }}-docker-images.tar.gz\` file
+          2. Extract the archive: \`tar -xzf talebook-${{ steps.prep.outputs.version }}-docker-images.tar.gz\`
+          3. Load the image for your platform:
+             - For AMD64: \`docker load -i talebook-${{ steps.prep.outputs.version }}-amd64.docker.tar\`
+             - For ARM64: \`docker load -i talebook-${{ steps.prep.outputs.version }}-arm64.docker.tar\`
+          4. Run the container: \`docker run -p 80:80 -v /path/to/books:/data/library codenai/talebook:${{ steps.prep.outputs.version }}-[amd64|arm64]\`
+
+          ## Version
+
+          Version: ${{ steps.prep.outputs.version }}
+          Git commit: ${{ github.sha }}
+          EOF
 
       - name: Create Release
         if: startsWith(github.ref, 'refs/tags/')
@@ -98,7 +131,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: ${{ github.ref }}
-          release_name: Release ${{ steps.prep.outputs.version }}
+          release_name: Talebook Release ${{ steps.prep.outputs.version }}
+          body_path: /tmp/README.md
           draft: false
           prerelease: false
 
@@ -112,4 +146,26 @@ jobs:
           asset_path: /tmp/talebook-${{ steps.prep.outputs.version }}-docker-images.tar.gz
           asset_name: talebook-${{ steps.prep.outputs.version }}-docker-images.tar.gz
           asset_content_type: application/gzip
+
+      - name: Upload Individual AMD64 Image
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: /tmp/release/talebook-${{ steps.prep.outputs.version }}-amd64.docker.tar
+          asset_name: talebook-${{ steps.prep.outputs.version }}-amd64.docker.tar
+          asset_content_type: application/octet-stream
+
+      - name: Upload Individual ARM64 Image
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: /tmp/release/talebook-${{ steps.prep.outputs.version }}-arm64.docker.tar
+          asset_name: talebook-${{ steps.prep.outputs.version }}-arm64.docker.tar
+          asset_content_type: application/octet-stream
 
