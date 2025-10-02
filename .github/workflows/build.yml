@@ -27,6 +27,9 @@ jobs:
           driver-opts: image=moby/buildkit:master
           buildkitd-flags: --debug
           use: true
+        env:
+          # Avoid set-output deprecation warning
+          ACTIONS_STEP_DEBUG: true
 
       - name: Cache Docker layers
         uses: actions/cache@v3
@@ -62,6 +65,9 @@ jobs:
       - name: Build Image (amd64)
         id: build-amd64
         uses: docker/build-push-action@v5
+        env:
+          # Avoid set-output deprecation warning
+          ACTIONS_STEP_DEBUG: true
         with:
           builder: ${{ steps.buildx.outputs.name }}
           context: .
@@ -80,6 +86,9 @@ jobs:
       - name: Build Image (arm64)
         id: build-arm64
         uses: docker/build-push-action@v5
+        env:
+          # Avoid set-output deprecation warning
+          ACTIONS_STEP_DEBUG: true
         with:
           builder: ${{ steps.buildx.outputs.name }}
           context: .
@@ -209,6 +218,8 @@ jobs:
         uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Avoid set-output deprecation warning
+          ACTIONS_STEP_DEBUG: true
         with:
           tag_name: ${{ github.ref }}
           release_name: Talebook Release ${{ steps.prep.outputs.version }}
@@ -221,6 +232,8 @@ jobs:
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Avoid set-output deprecation warning
+          ACTIONS_STEP_DEBUG: true
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
           asset_path: /tmp/talebook-${{ steps.prep.outputs.version }}-docker-images.tar.gz
@@ -314,6 +327,9 @@ jobs:
       - name: Update Release with Merge Instructions
         if: startsWith(github.ref, 'refs/tags/')
         uses: actions/github-script@v3
+        env:
+          # Avoid set-output deprecation warning
+          ACTIONS_STEP_DEBUG: true
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
