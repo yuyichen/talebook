@@ -2,8 +2,6 @@ name: 'buildx docker images'
 
 on:
   push:
-    branches:
-      - master
     tags:
       - "v*"
 
@@ -95,9 +93,14 @@ jobs:
           docker load -i /tmp/talebook-image-arm64.tar
           docker save -o /tmp/release/talebook-${{ steps.prep.outputs.version }}-arm64.docker.tar codenai/talebook:${{ steps.prep.outputs.version }}-arm64
 
-          # Create a compressed archive containing all images
+          # Create a highly compressed archive containing all images
           cd /tmp/release
-          tar -czf ../talebook-${{ steps.prep.outputs.version }}-docker-images.tar.gz *.docker.tar
+          # Use higher compression level (9) and pigz for parallel compression if available
+          if command -v pigz >/dev/null 2>&1; then
+            pigz -9 -c *.docker.tar > ../talebook-${{ steps.prep.outputs.version }}-docker-images.tar.gz
+          else
+            tar -I 'gzip -9' -cf ../talebook-${{ steps.prep.outputs.version }}-docker-images.tar.gz *.docker.tar
+          fi
 
           # Create a simple README for the release
           cat > /tmp/README.md << EOF
@@ -149,25 +152,102 @@ jobs:
           asset_name: talebook-${{ steps.prep.outputs.version }}-docker-images.tar.gz
           asset_content_type: application/gzip
 
-      - name: Upload Individual AMD64 Image
+      - name: Split Large AMD64 Image
         if: startsWith(github.ref, 'refs/tags/')
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: /tmp/release/talebook-${{ steps.prep.outputs.version }}-amd64.docker.tar
-          asset_name: talebook-${{ steps.prep.outputs.version }}-amd64.docker.tar
-          asset_content_type: application/octet-stream
+        run: |
+          # Check if AMD64 image is larger than 1.9GB and split if necessary
+          cd /tmp/release
+          AMD64_SIZE=$(stat -c%s "talebook-${{ steps.prep.outputs.version }}-amd64.docker.tar")
+          MAX_SIZE=$((1900 * 1024 * 1024)) # 1.9GB in bytes
 
-      - name: Upload Individual ARM64 Image
+          if [ $AMD64_SIZE -gt $MAX_SIZE ]; then
+            echo "AMD64 image is larger than 1.9GB, splitting..."
+            split -b $MAX_SIZE -d "talebook-${{ steps.prep.outputs.version }}-amd64.docker.tar" "talebook-${{ steps.prep.outputs.version }}-amd64.part."
+          fi
+
+      - name: Split Large ARM64 Image
         if: startsWith(github.ref, 'refs/tags/')
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Check if ARM64 image is larger than 1.9GB and split if necessary
+          cd /tmp/release
+          ARM64_SIZE=$(stat -c%s "talebook-${{ steps.prep.outputs.version }}-arm64.docker.tar")
+          MAX_SIZE=$((1900 * 1024 * 1024)) # 1.9GB in bytes
+
+          if [ $ARM64_SIZE -gt $MAX_SIZE ]; then
+            echo "ARM64 image is larger than 1.9GB, splitting..."
+            split -b $MAX_SIZE -d "talebook-${{ steps.prep.outputs.version }}-arm64.docker.tar" "talebook-${{ steps.prep.outputs.version }}-arm64.part."
+          fi
+
+      - name: Upload AMD64 Image or Parts
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          cd /tmp/release
+          # Check if the image was split
+          if ls talebook-${{ steps.prep.outputs.version }}-amd64.part.* 1> /dev/null 2>&1; then
+            # Upload split parts
+            for part in talebook-${{ steps.prep.outputs.version }}-amd64.part.*; do
+              curl -X POST                 -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}"                 -H "Content-Type: application/octet-stream"                 --data-binary @"$part"                 "${{ steps.create_release.outputs.upload_url }}&name=$(basename $part)"
+            done
+          else
+            # Upload the whole image
+            curl -X POST               -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}"               -H "Content-Type: application/octet-stream"               --data-binary @"talebook-${{ steps.prep.outputs.version }}-amd64.docker.tar"               "${{ steps.create_release.outputs.upload_url }}&name=talebook-${{ steps.prep.outputs.version }}-amd64.docker.tar"
+          fi
+
+      - name: Upload ARM64 Image or Parts
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          cd /tmp/release
+          # Check if the image was split
+          if ls talebook-${{ steps.prep.outputs.version }}-arm64.part.* 1> /dev/null 2>&1; then
+            # Upload split parts
+            for part in talebook-${{ steps.prep.outputs.version }}-arm64.part.*; do
+              curl -X POST                 -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}"                 -H "Content-Type: application/octet-stream"                 --data-binary @"$part"                 "${{ steps.create_release.outputs.upload_url }}&name=$(basename $part)"
+            done
+          else
+            # Upload the whole image
+            curl -X POST               -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}"               -H "Content-Type: application/octet-stream"               --data-binary @"talebook-${{ steps.prep.outputs.version }}-arm64.docker.tar"               "${{ steps.create_release.outputs.upload_url }}&name=talebook-${{ steps.prep.outputs.version }}-arm64.docker.tar"
+          fi
+
+      - name: Create Merge Instructions
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          cd /tmp/release
+          # Check if any images were split
+          if ls talebook-${{ steps.prep.outputs.version }}-amd64.part.* 1> /dev/null 2>&1 || ls talebook-${{ steps.prep.outputs.version }}-arm64.part.* 1> /dev/null 2>&1; then
+            cat >> /tmp/README.md << EOF
+
+          ## Note for Large Images
+
+          Some Docker images in this release are larger than GitHub's file size limit and have been split into multiple parts.
+
+          ### How to Merge Split Parts
+
+          For split images, you'll need to merge the parts before loading:
+
+          1. Download all parts for the architecture you need:
+             - AMD64 parts: talebook-${{ steps.prep.outputs.version }}-amd64.part.00, talebook-${{ steps.prep.outputs.version }}-amd64.part.01, etc.
+             - ARM64 parts: talebook-${{ steps.prep.outputs.version }}-arm64.part.00, talebook-${{ steps.prep.outputs.version }}-arm64.part.01, etc.
+
+          2. Merge the parts:
+             - For AMD64: \`cat talebook-${{ steps.prep.outputs.version }}-amd64.part.* > talebook-${{ steps.prep.outputs.version }}-amd64.docker.tar\`
+             - For ARM64: \`cat talebook-${{ steps.prep.outputs.version }}-arm64.part.* > talebook-${{ steps.prep.outputs.version }}-arm64.docker.tar\`
+
+          3. Then proceed with loading the image as described above.
+          EOF
+          fi
+
+      - name: Update Release with Merge Instructions
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: actions/github-script@v3
         with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: /tmp/release/talebook-${{ steps.prep.outputs.version }}-arm64.docker.tar
-          asset_name: talebook-${{ steps.prep.outputs.version }}-arm64.docker.tar
-          asset_content_type: application/octet-stream
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const readme = fs.readFileSync('/tmp/README.md', 'utf8');
+            await github.repos.updateRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              release_id: ${{ steps.create_release.outputs.id }},
+              body: readme
+            });
 
