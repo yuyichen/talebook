@@ -15,17 +15,31 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@master
+        uses: docker/setup-qemu-action@v3
         with:
-          platforms: all
+          platforms: linux/amd64,linux/arm64
 
       - name: Set up Docker Buildx
         id: buildx
-        uses: docker/setup-buildx-action@master
+        uses: docker/setup-buildx-action@v3
+        with:
+          install: true
+          driver-opts: image=moby/buildkit:master
+          buildkitd-flags: --debug
+          use: true
+
+      - name: Cache Docker layers
+        uses: actions/cache@v3
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-
+            ${{ runner.os }}-
 
       - name: Extract metadata (tags, labels) for Docker
         id: meta
-        uses: docker/metadata-action@v3
+        uses: docker/metadata-action@v5
         with:
           images: codenai/talebook
 
@@ -41,66 +55,113 @@ jobs:
           BUILD_ARGS="GIT_VERSION=${VERSION}"
           echo "Build args: ${BUILD_ARGS}"
 
-          # Set output parameters
-          echo ::set-output name=build_args::${BUILD_ARGS}
-          echo ::set-output name=version::${VERSION}
+          # Set output parameters using Environment Files (new method)
+          echo "build_args=${BUILD_ARGS}" >> $GITHUB_OUTPUT
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
 
-      - name: Build Image (amd64)
-        id: build-amd64
-        uses: docker/build-push-action@v2
+      - name: Build Images (Multi-platform)
+        id: build
+        uses: docker/build-push-action@v5
         with:
           builder: ${{ steps.buildx.outputs.name }}
           context: .
-          platforms: linux/amd64
+          platforms: linux/amd64,linux/arm64
           labels: ${{ steps.meta.outputs.labels }}
           push: false
-          cache-from: type=registry,ref=codenai/talebook:latest
-          cache-to: type=inline
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
           tags: |
             codenai/talebook:${{ steps.prep.outputs.version }}-amd64
             codenai/talebook:latest-amd64
-          build-args: |
-            ${{ steps.prep.outputs.build_args }}
-          outputs: type=docker,dest=/tmp/talebook-image-amd64.tar
-
-      - name: Build Image (arm64)
-        id: build-arm64
-        uses: docker/build-push-action@v2
-        with:
-          builder: ${{ steps.buildx.outputs.name }}
-          context: .
-          platforms: linux/arm64
-          labels: ${{ steps.meta.outputs.labels }}
-          push: false
-          cache-from: type=registry,ref=codenai/talebook:latest
-          cache-to: type=inline
-          tags: |
             codenai/talebook:${{ steps.prep.outputs.version }}-arm64
             codenai/talebook:latest-arm64
           build-args: |
             ${{ steps.prep.outputs.build_args }}
-          outputs: type=docker,dest=/tmp/talebook-image-arm64.tar
+          outputs: |
+            type=docker,dest=/tmp/talebook-image-amd64.tar,prefix=linux/amd64
+            type=docker,dest=/tmp/talebook-image-arm64.tar,prefix=linux/arm64
+
+      # Temp fix for cache export
+      # https://github.com/docker/build-push-action/issues/252
+      # https://github.com/moby/buildkit/issues/1896
+      - name: Move cache
+        run: |
+          rm -rf /tmp/.buildx-cache
+          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
+
+      - name: Verify Builds
+        run: |
+          echo "Checking if images were built successfully..."
+
+          if [ ! -f "/tmp/talebook-image-amd64.tar" ]; then
+            echo "Error: AMD64 image build artifact not found!"
+            exit 1
+          fi
+          echo "AMD64 image build artifact found. Size: $(du -h /tmp/talebook-image-amd64.tar | cut -f1)"
+
+          if [ ! -f "/tmp/talebook-image-arm64.tar" ]; then
+            echo "Error: ARM64 image build artifact not found!"
+            exit 1
+          fi
+          echo "ARM64 image build artifact found. Size: $(du -h /tmp/talebook-image-arm64.tar | cut -f1)"
 
       - name: Export Docker Images
         if: startsWith(github.ref, 'refs/tags/')
         run: |
           mkdir -p /tmp/release
+          echo "Starting Docker image export process..."
+
+          # Check if the build artifacts exist
+          if [ ! -f "/tmp/talebook-image-amd64.tar" ]; then
+            echo "Error: AMD64 image build artifact not found!"
+            exit 1
+          fi
+
+          if [ ! -f "/tmp/talebook-image-arm64.tar" ]; then
+            echo "Error: ARM64 image build artifact not found!"
+            exit 1
+          fi
+
+          # List Docker images before loading
+          echo "Docker images before loading:"
+          docker images | grep talebook || echo "No talebook images found yet"
 
           # Load and save images with proper names
+          echo "Loading AMD64 image..."
           docker load -i /tmp/talebook-image-amd64.tar
+          echo "Saving AMD64 image with new name..."
           docker save -o /tmp/release/talebook-${{ steps.prep.outputs.version }}-amd64.docker.tar codenai/talebook:${{ steps.prep.outputs.version }}-amd64
 
+          echo "Loading ARM64 image..."
           docker load -i /tmp/talebook-image-arm64.tar
+          echo "Saving ARM64 image with new name..."
           docker save -o /tmp/release/talebook-${{ steps.prep.outputs.version }}-arm64.docker.tar codenai/talebook:${{ steps.prep.outputs.version }}-arm64
 
+          # Verify the saved files exist
+          echo "Verifying saved files..."
+          if [ ! -f "/tmp/release/talebook-${{ steps.prep.outputs.version }}-amd64.docker.tar" ]; then
+            echo "Error: Failed to save AMD64 image!"
+            exit 1
+          fi
+
+          if [ ! -f "/tmp/release/talebook-${{ steps.prep.outputs.version }}-arm64.docker.tar" ]; then
+            echo "Error: Failed to save ARM64 image!"
+            exit 1
+          fi
+
           # Create a highly compressed archive containing all images
+          echo "Creating compressed archive..."
           cd /tmp/release
           # Use higher compression level (9) and pigz for parallel compression if available
           if command -v pigz >/dev/null 2>&1; then
+            echo "Using pigz for parallel compression..."
             pigz -9 -c *.docker.tar > ../talebook-${{ steps.prep.outputs.version }}-docker-images.tar.gz
           else
+            echo "Using gzip with maximum compression..."
             tar -I 'gzip -9' -cf ../talebook-${{ steps.prep.outputs.version }}-docker-images.tar.gz *.docker.tar
           fi
+
+          echo "Docker image export process completed successfully"
 
           # Create a simple README for the release
           cat > /tmp/README.md << EOF
