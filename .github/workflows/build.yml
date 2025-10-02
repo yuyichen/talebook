@@ -59,13 +59,13 @@ jobs:
           echo "build_args=${BUILD_ARGS}" >> $GITHUB_OUTPUT
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
 
-      - name: Build Images (Multi-platform)
-        id: build
+      - name: Build Image (amd64)
+        id: build-amd64
         uses: docker/build-push-action@v5
         with:
           builder: ${{ steps.buildx.outputs.name }}
           context: .
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/amd64
           labels: ${{ steps.meta.outputs.labels }}
           push: false
           cache-from: type=local,src=/tmp/.buildx-cache
@@ -73,13 +73,27 @@ jobs:
           tags: |
             codenai/talebook:${{ steps.prep.outputs.version }}-amd64
             codenai/talebook:latest-amd64
+          build-args: |
+            ${{ steps.prep.outputs.build_args }}
+          outputs: type=docker,dest=/tmp/talebook-image-amd64.tar
+
+      - name: Build Image (arm64)
+        id: build-arm64
+        uses: docker/build-push-action@v5
+        with:
+          builder: ${{ steps.buildx.outputs.name }}
+          context: .
+          platforms: linux/arm64
+          labels: ${{ steps.meta.outputs.labels }}
+          push: false
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
+          tags: |
             codenai/talebook:${{ steps.prep.outputs.version }}-arm64
             codenai/talebook:latest-arm64
           build-args: |
             ${{ steps.prep.outputs.build_args }}
-          outputs: |
-            type=docker,dest=/tmp/talebook-image-amd64.tar,prefix=linux/amd64
-            type=docker,dest=/tmp/talebook-image-arm64.tar,prefix=linux/arm64
+          outputs: type=docker,dest=/tmp/talebook-image-arm64.tar
 
       # Temp fix for cache export
       # https://github.com/docker/build-push-action/issues/252
