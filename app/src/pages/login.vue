@@ -1,136 +1,290 @@
 <template>
-    <v-row justify="center" class="fill-center">
-        <v-col xs="12" sm="8" md="4">
-            <v-card v-if="show_login" class="elevation-12">
-                <v-toolbar dark color="primary">
-                    <v-toolbar-title>欢迎访问</v-toolbar-title>
-                    <v-spacer></v-spacer>
-                    <v-btn v-if="$store.state.sys.allow.register" rounded color="green" to="/signup">注册</v-btn>
-                </v-toolbar>
-                <v-card-text>
-                    <v-form @submit.prevent="do_login">
-                        <v-text-field prepend-icon="person" v-model="username" label="用户名" type="text"></v-text-field>
-                        <v-text-field prepend-icon="lock" v-model="password" label="密码" type="password" id="password"></v-text-field>
-                        <p class="text-right">
-                            <a @click="show_login = !show_login"> 忘记密码? </a>
-                        </p>
-                        <div align="center">
-                            <v-btn type="submit" large rounded color="primary">登录</v-btn>
-                        </div>
-                    </v-form>
-                </v-card-text>
+  <div class="login-page">
+    <div class="login-container">
+      <n-card v-if="showLogin" class="login-card">
+        <template #header>
+          <div class="card-header">
+            <h3>欢迎访问</h3>
+            <n-button
+              v-if="mainStore.sys.allow.register"
+              type="success"
+              @click="$router.push('/signup')"
+            >
+              注册
+            </n-button>
+          </div>
+        </template>
 
-                <v-card-text v-if="socials.length > 0">
-                    <v-divider></v-divider>
-                    <div align="center">
-                        <br />
-                        <small>使用社交网络账号登录</small>
-                        <br />
-                        <template v-for="s in socials">
-                            <v-btn small outlined :key="s.text" :href="'/auth/login/' + s.value">{{ s.text }}</v-btn>
-                            &nbsp;
-                        </template>
-                    </div>
-                </v-card-text>
-                <v-alert v-if="alert.msg" :type="alert.type">{{ alert.msg }}</v-alert>
-            </v-card>
+        <n-form @submit.prevent="doLogin">
+          <n-form-item label="用户名">
+            <n-input
+              v-model:value="username"
+              placeholder="请输入用户名"
+              @keyup.enter="doLogin"
+            >
+              <template #prefix>
+                <n-icon><PersonIcon /></n-icon>
+              </template>
+            </n-input>
+          </n-form-item>
 
-            <v-card v-else class="elevation-12">
-                <v-toolbar dark color="red">
-                    <v-toolbar-title>重置密码</v-toolbar-title>
-                </v-toolbar>
-                <v-card-text v-if="!show_login">
-                    <v-form @submit.prevent="do_reset">
-                        <v-text-field prepend-icon="person" v-model="username" label="用户名" type="text"></v-text-field>
-                        <v-text-field
-                            prepend-icon="email"
-                            v-model="email"
-                            label="注册邮箱"
-                            type="text"
-                            autocomplete="old-email"
-                        ></v-text-field>
-                    </v-form>
-                    <div align="center">
-                        <v-btn rounded color="" class="mr-5" @click="show_login = !show_login">返回</v-btn>
-                        <v-btn rounded dark color="red" @click="do_reset">重置密码</v-btn>
-                    </div>
-                </v-card-text>
-                <v-alert v-if="alert.msg" :type="alert.type">{{ alert.msg }}</v-alert>
-            </v-card>
-        </v-col>
-    </v-row>
+          <n-form-item label="密码">
+            <n-input
+              v-model:value="password"
+              type="password"
+              placeholder="请输入密码"
+              show-password-on="mousedown"
+              @keyup.enter="doLogin"
+            >
+              <template #prefix>
+                <n-icon><LockIcon /></n-icon>
+              </template>
+            </n-input>
+          </n-form-item>
+
+          <div class="forgot-password">
+            <a @click="showLogin = !showLogin">忘记密码?</a>
+          </div>
+
+          <div class="login-button">
+            <n-button type="primary" size="large" block @click="doLogin">
+              登录
+            </n-button>
+          </div>
+        </n-form>
+
+        <template v-if="socials.length > 0">
+          <n-divider />
+          <div class="social-login">
+            <p>使用社交网络账号登录</p>
+            <div class="social-buttons">
+              <n-button
+                v-for="s in socials"
+                :key="s.text"
+                dashed
+                @click="$router.push('/auth/login/' + s.value)"
+              >
+                {{ s.text }}
+              </n-button>
+            </div>
+          </div>
+        </template>
+
+        <n-alert v-if="alert.msg" :type="alert.type" :show-icon="false">
+          {{ alert.msg }}
+        </n-alert>
+      </n-card>
+      <n-card v-else class="login-card">
+        <template #header>
+          <h3>重置密码</h3>
+        </template>
+
+        <n-form @submit.prevent="doReset">
+          <n-form-item label="用户名">
+            <n-input v-model:value="username" placeholder="请输入用户名">
+              <template #prefix>
+                <n-icon><PersonIcon /></n-icon>
+              </template>
+            </n-input>
+          </n-form-item>
+
+          <n-form-item label="注册邮箱">
+            <n-input v-model:value="email" placeholder="请输入注册邮箱">
+              <template #prefix>
+                <n-icon><EmailIcon /></n-icon>
+              </template>
+            </n-input>
+          </n-form-item>
+        </n-form>
+
+        <div class="reset-buttons">
+          <n-button @click="showLogin = !showLogin">返回</n-button>
+          <n-button type="error" @click="doReset">重置密码</n-button>
+        </div>
+
+        <n-alert v-if="alert.msg" :type="alert.type" :show-icon="false">
+          {{ alert.msg }}
+        </n-alert>
+      </n-card>
+    </div>
+  </div>
 </template>
 
-<script>
-export default {
-    data: () => ({
-        username: "",
-        password: "",
-        email: "",
-        show_login: true,
-        alert: {
-            type: "error",
-            msg: "",
-        },
-    }),
-    asyncData({ store }) {
-        store.commit("navbar", false);
-    },
-    head: () => ({
-        title: "登录"
-    }),
-    created() {
-        this.$store.commit("navbar", false);
-        this.$backend("/user/info").then((rsp) => {
-            this.$store.commit("login", rsp);
-        });
-    },
-    computed: {
-        socials: function () {
-            return this.$store.state.sys.socials;
-        },
-    },
-    methods: {
-        do_login: function () {
-            var data = new URLSearchParams();
-            data.append("username", this.username);
-            data.append("password", this.password);
-            this.$backend("/user/sign_in", {
-                method: "POST",
-                body: data,
-            }).then((rsp) => {
-                if (rsp.err != "ok") {
-                    this.alert.type = "error";
-                    this.alert.msg = rsp.msg;
-                } else {
-                    this.$store.commit("navbar", true);
-                    this.$router.push("/");
-                }
-            });
-        },
-        do_reset: function () {
-            var data = new URLSearchParams();
-            data.append("username", this.username);
-            data.append("email", this.email);
-            this.$backend("/user/reset", {
-                method: "POST",
-                body: data,
-            }).then((rsp) => {
-                if (rsp.err == "ok") {
-                    this.alert.type = "success";
-                    this.alert.msg = "重置成功！请查阅密码通知邮件。";
-                } else {
-                    this.alert.type = "error";
-                    this.alert.msg = rsp.msg;
-                }
-            });
-        },
-    },
+<script setup>
+import { ref, computed, onMounted } from "vue";
+import { useMessage } from "naive-ui";
+import { useRouter } from "vue-router";
+import {
+  Person as PersonIcon,
+  LockClosed as LockIcon,
+  Mail as EmailIcon,
+} from "@vicons/ionicons5";
+import { useMainStore } from "~/store";
+import { useNuxtApp } from '#app';
+
+const message = useMessage();
+const router = useRouter();
+const mainStore = useMainStore();
+const { $backend } = useNuxtApp();
+
+// 响应式数据
+const username = ref("");
+const password = ref("");
+const email = ref("");
+const showLogin = ref(true);
+const alert = ref({
+  type: "error",
+  msg: "",
+});
+
+// 计算属性
+const socials = computed(() => {
+  return mainStore.sys.socials;
+});
+
+// 方法
+const doLogin = async () => {
+  try {
+    const data = new URLSearchParams();
+    data.append("username", username.value);
+    data.append("password", password.value);
+
+    const rsp = await $backend("/user/sign_in", {
+      method: "POST",
+      body: data,
+    });
+
+    if (rsp.err !== "ok") {
+      alert.value.type = "error";
+      alert.value.msg = rsp.msg;
+    } else {
+      mainStore.navbar(true);
+      router.push("/");
+    }
+  } catch (error) {
+    console.error("Login error:", error);
+    alert.value.type = "error";
+    alert.value.msg = "登录失败，请稍后再试";
+  }
 };
+
+const doReset = async () => {
+  try {
+    const data = new URLSearchParams();
+    data.append("username", username.value);
+    data.append("email", email.value);
+
+    const rsp = await $backend("/user/reset", {
+      method: "POST",
+      body: data,
+    });
+
+    if (rsp.err === "ok") {
+      alert.value.type = "success";
+      alert.value.msg = "重置成功！请查阅密码通知邮件。";
+    } else {
+      alert.value.type = "error";
+      alert.value.msg = rsp.msg;
+    }
+  } catch (error) {
+    console.error("Reset password error:", error);
+    alert.value.type = "error";
+    alert.value.msg = "重置失败，请稍后再试";
+  }
+};
+
+// 生命周期
+onMounted(() => {
+  mainStore.navbar(false);
+
+  // 获取用户信息
+  $backend("/user/info")
+    .then((rsp) => {
+      mainStore.login(rsp);
+    })
+    .catch((error) => {
+      console.error("Failed to fetch user info:", error);
+    });
+});
+
+// 设置页面标题和布局
+useHead({
+  title: "登录",
+});
+
+definePageMeta({
+  layout: false,
+});
 </script>
 
-<style>
-.fill-center {
-    margin-top: 6%;
+<style scoped>
+.login-page {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background-color: var(--body-color);
+  padding: 24px;
+}
+
+.login-container {
+  width: 100%;
+  max-width: 400px;
+}
+
+.login-card {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.card-header h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.forgot-password {
+  text-align: right;
+  margin-bottom: 16px;
+}
+
+.forgot-password a {
+  color: var(--primary-color);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.login-button {
+  margin-top: 16px;
+}
+
+.social-login {
+  text-align: center;
+  padding: 16px 0;
+}
+
+.social-login p {
+  margin: 0 0 12px;
+  color: var(--text-color-3);
+  font-size: 0.9rem;
+}
+
+.social-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.reset-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 16px;
 }
 </style>

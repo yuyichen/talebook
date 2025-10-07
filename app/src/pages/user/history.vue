@@ -1,77 +1,140 @@
 <template>
-    <div>
-        <v-row align=start v-if="history.length == 0">
-            <v-col cols=12>
-                <p class="title"> 暂无阅读历史。请尽情<a to="/">畅游书籍的海洋</a>吧~ </p>
-            </v-col>
-        </v-row>
-        <v-row v-else v-for="item in history" :key="item.name">
-            <v-col cols=12>
-                <legend>{{item.name}}</legend>
-                <v-divider></v-divider>
-            </v-col>
-            <v-col cols=12 v-if="item.books.length==0" >
-                <p class="pb-6">无记录</p>
-            </v-col>
-            <v-col cols=4 sm=2 v-else v-for="book in item.books" :key="item.name + book.id">
-                <v-card :to="book.href" class="ma-1">
-                    <v-img :src="book.img" :aspect-ratio="11/15" > </v-img>
-                </v-card>
-            </v-col>
-        </v-row>
+  <div class="history-page">
+    <div v-if="history.length === 0" class="empty-history">
+      <n-result status="info" title="暂无阅读历史">
+        <template #footer>
+          <n-button type="primary" @click="$router.push('/')">
+            畅游书籍的海洋
+          </n-button>
+        </template>
+      </n-result>
     </div>
+
+    <div v-else>
+      <div v-for="item in history" :key="item.name" class="history-section">
+        <n-divider>
+          <h3>{{ item.name }}</h3>
+        </n-divider>
+
+        <div v-if="item.books.length === 0" class="no-records">
+          <n-text depth="3">无记录</n-text>
+        </div>
+
+        <n-grid v-else x-gap="12" y-gap="12" cols="2 s:3 m:4 l:6">
+          <n-grid-item v-for="book in item.books" :key="item.name + book.id">
+            <n-card :bordered="true" class="book-card" clickable @click="$router.push(book.href)">
+              <n-image :src="book.img" :alt="book.title" class="book-image" />
+            </n-card>
+          </n-grid-item>
+        </n-grid>
+      </div>
+    </div>
+  </div>
 </template>
 
-<script>
-export default {
-    components: {
+<script setup>
+import { ref, computed, onMounted } from 'vue'
+import { useMainStore } from '~/store'
+
+const mainStore = useMainStore()
+
+// 响应式数据
+const user = ref({})
+
+// 计算属性
+const history = computed(() => {
+  if (user.value.extra === undefined) { 
+    return [] 
+  }
+
+  return [
+    { 
+      name: '在线阅读', 
+      books: getHistory(user.value.extra.read_history) 
     },
-    computed: {
-        history: function() {
-            if ( this.user.extra === undefined ) { return [] }
-            return [
-                { name: '在线阅读', books: this.get_history(this.user.extra.read_history) },
-                { name: '推送过的书', books: this.get_history(this.user.extra.push_history) },
-                { name: '浏览记录', books: this.get_history(this.user.extra.visit_history) },
-            ]
-        },
+    { 
+      name: '推送过的书', 
+      books: getHistory(user.value.extra.push_history) 
     },
-    data: () => ({
-        user: {},
-    }),
-    async asyncData({ params, app, res }) {
-        if ( res !== undefined ) {
-            res.setHeader('Cache-Control', 'no-cache');
-        }
-        return app.$backend("/user/info?detail=1");
+    { 
+      name: '浏览记录', 
+      books: getHistory(user.value.extra.visit_history) 
     },
-    head: () => ({
-        title: "阅读记录",
-    }),
-    created() {
-        this.init(this.$route);
-    },
-    beforeRouteUpdate(to, from, next) {
-        this.init(to, next);
-    },
-    methods: {
-        init(route, next) {
-            this.$store.commit('navbar', true);
-            this.$backend("/user/info?detail=1")
-            .then( rsp => {
-                this.user = rsp.user;
-            });
-            if ( next ) next();
-        },
-        get_history(his) {
-            if ( ! his ) { return []; }
-            return his.map( b => {
-                b.href = '/book/' + b.id;
-                return b;
-            });
-        },
-    },
+  ]
+})
+
+// 方法
+const getHistory = (his) => {
+  if (!his) { 
+    return [] 
+  }
+
+  return his.map(book => {
+    book.href = '/book/' + book.id
+    return book
+  })
 }
+
+const init = async () => {
+  try {
+    mainStore.navbar(true)
+    const rsp = await $fetch('/api/user/info?detail=1')
+    user.value = rsp.user
+  } catch (error) {
+    console.error('Init user history error:', error)
+  }
+}
+
+// 生命周期
+onMounted(() => {
+  init()
+})
+
+// 设置页面标题
+useHead({
+  title: '阅读记录'
+})
 </script>
 
-<style></style>
+<style scoped>
+.history-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+.empty-history {
+  padding: 40px 0;
+}
+
+.history-section {
+  margin-bottom: 32px;
+}
+
+.history-section h3 {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+.no-records {
+  padding: 16px 0;
+  text-align: center;
+}
+
+.book-card {
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.book-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.book-image {
+  width: 100%;
+  aspect-ratio: 11/15;
+  object-fit: cover;
+  border-radius: 4px;
+}
+</style>

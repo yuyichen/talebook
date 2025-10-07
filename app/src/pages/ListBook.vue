@@ -1,137 +1,160 @@
 <template>
-  <div>
-    <v-row>
-      <v-col cols=12>
-        <h2>{{ title }}</h2>
-        <v-divider class="mt-3 mb-0"></v-divider>
-      </v-col>
+  <div class="list-book-page">
+    <div class="page-header">
+      <h2>{{ title }}</h2>
+      <n-divider />
+    </div>
 
-      <v-col>
-        <book-cards :books="books"></book-cards>
-      </v-col>
+    <div class="book-list">
+      <BookCards :books="books" />
+    </div>
 
-      <v-col cols=12>
-        <v-container class="max-width">
-          <v-pagination v-if="page_cnt > 0" v-model="page" :length="page_cnt" circle
-                        @input="change_page"></v-pagination>
-        </v-container>
-        <div class="text-xs-center book-pager">
-        </div>
-      </v-col>
-    </v-row>
+    <div class="pagination-container">
+      <n-pagination
+        v-if="pageCnt > 0"
+        v-model:page="page"
+        :page-count="pageCnt"
+        @update:page="changePage"
+      />
+    </div>
   </div>
 </template>
 
-<script>
-import BookCards from "../components/BookCards.vue";
+<script setup>
+import { ref, computed, onMounted, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { useMainStore } from '~/store'
+import { useNuxtApp } from '#app'
+import BookCards from "../components/BookCards.vue"
 
-export default {
-  components: {
-    BookCards,
-  },
-  computed: {},
-  data: () => ({
-    title: "",
-    page: 1,
-    books: [],
-    total: 0,
-    page_size: 60,
-    page_cnt: 0,
-    inited: false,
-  }),
-  async asyncData({route, app, res}) {
-    if (res !== undefined) {
-      res.setHeader('Cache-Control', 'no-cache');
+const route = useRoute()
+const router = useRouter()
+const mainStore = useMainStore()
+const { $backend } = useNuxtApp()
+
+// 响应式数据
+const title = ref('')
+const page = ref(1)
+const books = ref([])
+const total = ref(0)
+const pageSize = ref(60)
+const pageCnt = ref(0)
+const inited = ref(false)
+
+// 计算属性
+const getPageTitle = computed(() => {
+  switch (route.path) {
+    case "/hot":
+      return "热门书籍"
+    case "/search":
+      return "搜索"
+    case "/recent":
+      return "近期更新"
+    default:
+      break
+  }
+
+  if (route.params.meta !== undefined) {
+    const name = decodeURIComponent(route.params.name)
+    const titles = {
+      tag: `"${name}"标签的书籍`,
+      series: `${name}丛书`,
+      rating: `${name}星书籍`,
+      author: `${name}的著作`,
+      publisher: `${name}出版的书籍`,
     }
-    return app.$backend(route.fullPath);
-  },
-  head() {
-    switch (this.$route.path) {
-      case "/hot":
-        return {title: "热门书籍"};
+    const meta = route.path.split("/")[1]
+    if (titles[meta] !== undefined) {
+      return titles[meta]
+    }
+  }
 
-      case "/search":
-        return {title: "搜索"};
+  return title.value
+})
 
-      case "/recent":
-        return {title: "近期更新"};
+// 方法
+const init = async (currentRoute, next) => {
+  try {
+    inited.value = true
+    mainStore.navbar(true)
 
-      default:
-        break
+    const rsp = await $backend(currentRoute.fullPath)
+
+    if (rsp.err !== 'ok') {
+      // 这里可以使用全局的 alert 方法
+      console.error(rsp.msg)
+      return
     }
 
-    if (this.$route.params.meta !== undefined) {
-      var name = decodeURIComponent(this.$route.params.name);
-      var titles = {
-        tag: `"${name}”标签的书籍`,
-        series: `${name}丛书`,
-        rating: `${name}星书籍`,
-        author: `${name}的著作`,
-        publisher: `${name}出版的书籍`,
-      }
-      var meta = this.$route.path.split("/")[1];
-      if (titles[meta] !== undefined) {
-        return {
-          title: titles[meta]
-        }
-      }
-    }
+    title.value = rsp.title
+    books.value = rsp.books
+    total.value = rsp.total
+    pageCnt.value = Math.max(1, Math.ceil(total.value / pageSize.value))
 
-    return {
-      title: this.title,
-    }
-  },
-  created() {
-    if (this.$route.query.start != undefined) {
-      this.page = 1 + parseInt(this.$route.query.start / this.page_size)
-    }
-    if (!this.inited) {
-
-    }
-    this.page_cnt = Math.max(1, Math.ceil(this.total / this.page_size))
-
-  },
-
-  beforeRouteUpdate(to, from, next) {
-    this.init(to, next);
-  },
-  methods: {
-    init(route, next) {
-      this.inited = true;
-      this.$store.commit('navbar', true);
-      this.$backend(route.fullPath)
-        .then(rsp => {
-          if (rsp.err != 'ok') {
-            this.alert("error", rsp.msg);
-            return;
-          }
-          this.title = rsp.title;
-          this.books = rsp.books;
-          this.total = rsp.total
-          this.page_cnt = Math.max(1, Math.ceil(this.total / this.page_size));
-        })
-      if (next) next();
-    },
-    change_page() {
-      var r = Object.assign({}, this.$route.query);
-      if (this.page < 1) {
-        this.page = 1
-      }
-      r.start = (this.page - 1) * this.page_size;
-      r.size = this.page_size;
-      this.$router.push({query: r});
-    }
-  },
+    if (next) next()
+  } catch (error) {
+    console.error('Init list book error:', error)
+  }
 }
+
+const changePage = () => {
+  const r = Object.assign({}, route.query)
+  if (page.value < 1) {
+    page.value = 1
+  }
+  r.start = (page.value - 1) * pageSize.value
+  r.size = pageSize.value
+  router.push({ query: r })
+}
+
+// 监听路由变化
+watch(() => route.fullPath, async (newPath) => {
+  await init(route)
+})
+
+// 生命周期
+onMounted(async () => {
+  if (route.query.start !== undefined) {
+    page.value = 1 + parseInt(route.query.start / pageSize.value)
+  }
+
+  if (!inited.value) {
+    await init(route)
+  }
+
+  pageCnt.value = Math.max(1, Math.ceil(total.value / pageSize.value))
+})
+
+// 设置页面标题
+useHead({
+  title: getPageTitle
+})
 </script>
 
 <style scoped>
-.book-list-legend {
-  margin-top: 6px;
-  margin-bottom: 16px;
+.list-book-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 16px;
 }
 
-.book-pager {
-  margin-top: 30px;
+.page-header {
+  margin-bottom: 24px;
+}
+
+.page-header h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin: 0 0 16px 0;
+}
+
+.book-list {
+  margin-bottom: 32px;
+}
+
+.pagination-container {
+  display: flex;
+  justify-content: center;
+  margin-top: 24px;
 }
 </style>

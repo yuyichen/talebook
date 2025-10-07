@@ -1,80 +1,155 @@
 <template>
-<v-row justify=center class='fill-center'>
-    <v-col xs=12 sm=8 md=4>
-        <v-card class="elevation-12">
-            <v-toolbar dark color="primary">
-                <v-toolbar-title align-center >请输入访问密码</v-toolbar-title>
-            </v-toolbar>
-            <v-card-text>
-                <p class="py-6 body-3 text-center" >{{welcome}}</p>
-                <v-form @submit.prevent="welcome_login" >
-                    <v-text-field prepend-icon="lock" v-model="invite_code" required
-                        label="访问密码" type="password" :error="is_err" :error-messages="msg" :loading="loading"></v-text-field>
-                </v-form>
-            </v-card-text>
+  <div class="welcome-page">
+    <n-card class="welcome-card">
+      <template #header>
+        <div class="card-header">
+          <h3>请输入访问密码</h3>
+        </div>
+      </template>
 
-            <v-card-actions>
-                <v-spacer></v-spacer>
-                <v-btn @click="welcome_login" color="primary">Login</v-btn>
-                <v-spacer></v-spacer>
-            </v-card-actions>
+      <div class="welcome-text">
+        <p>{{ welcome }}</p>
+      </div>
 
-        </v-card>
-    </v-col>
-</v-row>
+      <n-form @submit.prevent="welcomeLogin">
+        <n-form-item :show-require-mark="true" :validation-status="isErr ? 'error' : undefined" :feedback="msg">
+          <n-input
+            v-model:value="inviteCode"
+            type="password"
+            placeholder="请输入访问密码"
+            :loading="loading"
+            @keyup.enter="welcomeLogin"
+          >
+            <template #prefix>
+              <n-icon><LockIcon /></n-icon>
+            </template>
+          </n-input>
+        </n-form-item>
+      </n-form>
+
+      <template #footer>
+        <div class="card-footer">
+          <n-button type="primary" @click="welcomeLogin" :loading="loading">
+            登录
+          </n-button>
+        </div>
+      </template>
+    </n-card>
+  </div>
 </template>
 
-<script>
-export default {
-    data: () => ({
-        valid: true,
-        form: null,
-        is_err: false,
-        err: "ok",
-        msg: "",
-        welcome: "本站为私人图书馆，需输入密码才可进行访问",
-        loading: false,
-        invite_code: "",
-    }),
-    async asyncData({ app, res }) {
-        app.store.commit('navbar', false);
-        if ( res !== undefined ) {
-            res.setHeader('Cache-Control', 'no-cache');
-        }
-        return app.$backend("/welcome");
-    },
-    head: () => ({
-        title: "私人图书馆"
-    }),
-    created() {
-        this.$store.commit('navbar', false);
-        if ( this.err == 'free' ) {
-            this.$router.push(this.$route.query.next || "/");
-        } else if ( this.err == 'not_installed' ) {
-            this.$router.push("/install")
-        }
-    },
-    methods: {
-        welcome_login: function() {
-            this.loading = true;
-            var data = new URLSearchParams();
-            data.append('invite_code', this.invite_code);
-            this.$backend("/welcome", {
-                method: 'POST',
-                body: data,
-            })
-            .then( rsp => {
-                this.loading = false;
-                if ( rsp.err != 'ok' ) {
-                    this.is_err = true;
-                    this.msg = rsp.msg;
-                } else {
-                    this.is_err = false;
-                    location.reload();
-                }
-            });
-        },
-    },
+<script setup>
+import { ref, onMounted } from 'vue'
+import { useMessage } from 'naive-ui'
+import { LockClosed as LockIcon } from '@vicons/ionicons5'
+import { useRoute, useRouter } from 'vue-router'
+import { useMainStore } from '~/store'
+
+const message = useMessage()
+const route = useRoute()
+const router = useRouter()
+const mainStore = useMainStore()
+
+// 响应式数据
+const valid = ref(true)
+const isErr = ref(false)
+const err = ref('ok')
+const msg = ref('')
+const welcome = ref('本站为私人图书馆，需输入密码才可进行访问')
+const loading = ref(false)
+const inviteCode = ref('')
+
+// 方法
+const welcomeLogin = async () => {
+  try {
+    loading.value = true
+    const data = new URLSearchParams()
+    data.append('invite_code', inviteCode.value)
+
+    const rsp = await $fetch('/api/welcome', {
+      method: 'POST',
+      body: data
+    })
+
+    loading.value = false
+
+    if (rsp.err !== 'ok') {
+      isErr.value = true
+      msg.value = rsp.msg
+    } else {
+      isErr.value = false
+      // 重新加载页面以更新登录状态
+      location.reload()
+    }
+  } catch (error) {
+    console.error('Welcome login error:', error)
+    loading.value = false
+    isErr.value = true
+    msg.value = '登录失败，请稍后再试'
+  }
 }
+
+// 生命周期
+onMounted(async () => {
+  try {
+    mainStore.navbar(false)
+
+    const rsp = await $fetch('/api/welcome')
+    err.value = rsp.err
+
+    if (err.value === 'free') {
+      router.push(route.query.next || '/')
+    } else if (err.value === 'not_installed') {
+      router.push('/install')
+    }
+  } catch (error) {
+    console.error('Welcome page init error:', error)
+  }
+})
+
+// 设置页面标题和布局
+useHead({
+  title: '私人图书馆'
+})
+
+definePageMeta({
+  layout: false
+})
 </script>
 
+<style scoped>
+.welcome-page {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background-color: var(--body-color);
+  padding: 24px;
+}
+
+.welcome-card {
+  width: 100%;
+  max-width: 400px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.card-header {
+  text-align: center;
+}
+
+.card-header h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.welcome-text {
+  text-align: center;
+  padding: 16px 0;
+}
+
+.card-footer {
+  display: flex;
+  justify-content: center;
+}
+</style>

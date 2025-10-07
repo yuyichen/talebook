@@ -1,103 +1,257 @@
 <template>
-    <div>
-    <v-row>
-        <v-col cols=12>
-            <p class="ma-0 title">随便推荐</p>
-        </v-col>
-        <v-col cols=6 xs=6 sm=4 md=2 lg=1 v-for="(book,idx) in get_random_books" :key="'rec'+idx+book.id" class="book-card">
-            <v-card :to="book.href" class="ma-1">
-                <v-img :src="book.img" :aspect-ratio="11/15" > </v-img>
-            </v-card>
-        </v-col>
-    </v-row>
-    <v-row>
-        <v-col cols=12>
-            <v-divider class="new-legend"></v-divider>
-            <p class="ma-0 title">新书推荐</p>
-        </v-col>
-        <v-col cols=12>
-            <book-cards :books="get_recent_books"></book-cards>
-        </v-col>
-    </v-row>
-    <v-row>
-        <v-col cols=12>
-            <v-divider class="new-legend"></v-divider>
-            <p class="ma-0 title">分类浏览</p>
-        </v-col>
-        <v-col cols=12 sm=6 md=4 v-for="nav in navs" :key="nav.text">
-            <v-card outlined>
-                <v-list>
-                    <v-list-item :to="nav.href" >
-                        <v-list-item-avatar large color='primary' >
-                            <v-icon dark >{{nav.icon}}</v-icon>
-                        </v-list-item-avatar>
-                        <v-list-item-content>
-                            <v-list-item-title>{{nav.text}} </v-list-item-title>
-                            <v-list-item-subtitle>{{nav.subtitle}}</v-list-item-subtitle>
-                        </v-list-item-content>
-                        <v-list-item-action>
-                            <v-icon >mdi-arrow-right</v-icon>
-                        </v-list-item-action>
-                    </v-list-item>
-                </v-list>
-            </v-card>
-        </v-col>
-    </v-row>
-    </div>
+  <div class="index-page">
+    <!-- 随机推荐 -->
+    <section class="section">
+      <h2 class="section-title">随便推荐</h2>
+      <div class="random-books">
+        <div 
+          v-for="(book, idx) in getRandomBooks" 
+          :key="'rec' + idx + book.id" 
+          class="book-card"
+          @click="$router.push(book.href)"
+        >
+          <n-image :src="book.img" :alt="book.title" class="book-image" />
+        </div>
+      </div>
+    </section>
+
+    <!-- 新书推荐 -->
+    <section class="section">
+      <n-divider class="divider" />
+      <h2 class="section-title">新书推荐</h2>
+      <BookCards :books="getRecentBooks" />
+    </section>
+
+    <!-- 分类浏览 -->
+    <section class="section">
+      <n-divider class="divider" />
+      <h2 class="section-title">分类浏览</h2>
+      <n-grid x-gap="12" y-gap="12" cols="1 s:2 m:3">
+        <n-grid-item v-for="nav in navs" :key="nav.text">
+          <n-card :bordered="true" class="nav-card" clickable @click="$router.push(nav.href)">
+            <div class="nav-item">
+              <div class="nav-icon">
+                <n-icon size="24">
+                  <component :is="nav.iconComponent" />
+                </n-icon>
+              </div>
+              <div class="nav-content">
+                <div class="nav-title">{{ nav.text }}</div>
+                <div class="nav-subtitle">{{ nav.subtitle }}</div>
+              </div>
+              <div class="nav-action">
+                <n-icon>
+                  <ArrowForwardIcon />
+                </n-icon>
+              </div>
+            </div>
+          </n-card>
+        </n-grid-item>
+      </n-grid>
+    </section>
+  </div>
 </template>
 
-<script>
-import BookCards from "~/components/BookCards.vue";
-export default {
-    name: 'IndexPage',
-    components: {
-        BookCards,
+<script setup>
+import { ref, computed, onMounted, markRaw } from 'vue'
+import { useNuxtApp } from '#app'
+import { useMainStore } from '~/store'
+import BookCards from "~/components/BookCards.vue"
+import { 
+  Grid as WidgetsIcon, 
+  People as PeopleIcon, 
+  Business as BusinessIcon, 
+  Bookmark as BookmarkIcon, 
+  Time as HistoryIcon, 
+  TrendingUp as TrendingUpIcon,
+  ArrowForward as ArrowForwardIcon
+} from '@vicons/ionicons5'
+
+const mainStore = useMainStore()
+const { $backend } = useNuxtApp()
+
+// 响应式数据
+const randomBooks = ref([])
+const newBooks = ref([])
+const navs = ref([])
+
+// 计算属性
+const getRandomBooks = computed(() => {
+  return randomBooks.value.map(book => {
+    if (book['href'] === undefined) {
+      book['href'] = "/book/" + book.id
+    }
+    return book
+  })
+})
+
+const getRecentBooks = computed(() => {
+  return newBooks.value.map(book => {
+    if (book['href'] === undefined) {
+      book['href'] = "/book/" + book.id
+    }
+    return book
+  })
+})
+
+// 方法
+const initNavs = () => {
+  navs.value = [
+    { 
+      icon: 'widgets', 
+      iconComponent: markRaw(WidgetsIcon),
+      href: '/nav', 
+      text: '分类导览', 
+      subtitle: `共 ${mainStore.sys.books} 本书籍`
     },
-    computed: {
-        get_random_books: function() {
-            return this.random_books.map( b => {
-                b['href'] = "/book/" + b.id;
-                return b;
-            });
-        },
-        get_recent_books: function() {
-            return this.new_books.map( b => {
-                b['href'] = "/book/" + b.id;
-                return b;
-            });
-        },
+    { 
+      icon: 'mdi-human-greeting', 
+      iconComponent: markRaw(PeopleIcon),
+      href: '/author', 
+      text: '作者', 
+      subtitle: `共 ${mainStore.sys.authors} 位作者`
     },
-    created() {
-        this.$store.commit('navbar', true);
-        this.navs = [
-            { icon: 'widgets',            href:'/nav',       text: '分类导览',  count: this.$store.state.sys.books      },
-            { icon: 'mdi-human-greeting', href:'/author',    text: '作者',     count: this.$store.state.sys.authors    },
-            { icon: 'mdi-home-group',     href:'/publisher', text: '出版社',   count: this.$store.state.sys.publishers },
-            { icon: 'mdi-tag-heart',      href:'/tag',       text: '标签',     count: this.$store.state.sys.tags       },
-            { icon: 'mdi-history',        href:'/recent',    text: '所有书籍', },
-            { icon: 'mdi-trending-up',    href:'/hot',       text: '热度榜单', },
-            ]
+    { 
+      icon: 'mdi-home-group', 
+      iconComponent: markRaw(BusinessIcon),
+      href: '/publisher', 
+      text: '出版社', 
+      subtitle: `共 ${mainStore.sys.publishers} 家出版社`
     },
-    async asyncData({ app, res }) {
-        if ( res !== undefined ) {
-            res.setHeader('Cache-Control', 'no-cache');
-        }
-        return app.$backend("/index?random=12&recent=12");
+    { 
+      icon: 'mdi-tag-heart', 
+      iconComponent: markRaw(BookmarkIcon),
+      href: '/tag', 
+      text: '标签', 
+      subtitle: `共 ${mainStore.sys.tags} 个标签`
     },
-    data: () => ({
-        random_books: [],
-        new_books: [],
-        navs: [],
-    }),
-    head: () => ({
-        titleTemplate: "%s",
-    })
+    { 
+      icon: 'mdi-history', 
+      iconComponent: markRaw(HistoryIcon),
+      href: '/recent', 
+      text: '所有书籍', 
+      subtitle: '浏览全部书籍'
+    },
+    { 
+      icon: 'mdi-trending-up', 
+      iconComponent: markRaw(TrendingUpIcon),
+      href: '/hot', 
+      text: '热度榜单', 
+      subtitle: '查看热门书籍'
+    }
+  ]
 }
+
+// 生命周期
+onMounted(() => {
+  mainStore.navbar(true)
+  initNavs()
+
+  // 获取首页数据
+  $backend('/index?random=12&recent=12')
+    .then(data => {
+      randomBooks.value = data.random_books || []
+      newBooks.value = data.recent_books || []
+    })
+    .catch(error => {
+      console.error('Failed to fetch index data:', error)
+    })
+})
+
+// 设置页面标题
+useHead({
+  titleTemplate: "%s"
+})
 </script>
 
-<style>
-.new-legend {
-    margin-top: 30px;
-    margin-bottom: 20px;
+<style scoped>
+.index-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+.section {
+  margin-bottom: 32px;
+}
+
+.section-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 16px;
+  color: var(--text-color-1);
+}
+
+.divider {
+  margin: 24px 0;
+}
+
+.random-books {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 12px;
+}
+
+.book-card {
+  cursor: pointer;
+  border-radius: 4px;
+  overflow: hidden;
+  transition: transform 0.2s;
+}
+
+.book-card:hover {
+  transform: translateY(-4px);
+}
+
+.book-image {
+  width: 100%;
+  aspect-ratio: 11/15;
+  object-fit: cover;
+  border-radius: 4px;
+}
+
+.nav-card {
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.nav-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.nav-icon {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--primary-color);
+  color: white;
+  border-radius: 50%;
+}
+
+.nav-content {
+  flex: 1;
+}
+
+.nav-title {
+  font-size: 1.1rem;
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+.nav-subtitle {
+  font-size: 0.9rem;
+  color: var(--text-color-3);
+}
+
+.nav-action {
+  color: var(--text-color-3);
 }
 </style>

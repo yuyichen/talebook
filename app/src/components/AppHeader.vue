@@ -1,450 +1,616 @@
 <template>
-  <div>
-    <v-navigation-drawer
-      v-model="sidebar"
-      app
-      fixed
-      width="240"
-      :clipped="$vuetify.breakpoint.lgAndUp"
-    >
-      <v-list dense v-if="items.length > 0">
-        <template v-for="(item, idx) in items">
-          <v-subheader v-if="item.heading" :key="idx">{{
-            item.heading
-          }}</v-subheader>
-
-          <!-- 二级菜单 -->
-          <v-list-group v-else-if="item.groups" no-action :value="item.expand">
-            <template v-slot:activator>
-              <v-list-item-action class="mt-1 mb-1 mr-2" dense>
-                <v-icon class="pa-0 ma-0">{{ item.icon }}</v-icon>
-              </v-list-item-action>
-              <v-list-item-content>
-                <v-list-item-title v-text="item.text"></v-list-item-title>
-              </v-list-item-content>
+  <n-layout>
+    <!-- 顶部导航栏 -->
+    <n-layout-header class="header">
+      <div class="header-content">
+        <div class="header-left">
+          <n-button quaternary circle @click="sidebar = !sidebar">
+            <template #icon>
+              <n-icon><MenuIcon /></n-icon>
             </template>
+          </n-button>
+          <div class="site-title" @click="router.push('/')">
+            {{ sys.title }}
+          </div>
+        </div>
 
-            <v-list-item
-              v-for="link in item.groups"
-              :key="link.href"
-              :to="link.href"
+        <div class="header-right">
+          <!-- 搜索框 - PC端 -->
+          <div v-if="!isMobile" class="search-box">
+            <n-input
+              v-model:value="search"
+              placeholder="搜索"
+              @keyup.enter="doSearch"
             >
-              <v-list-item-content>
-                <v-list-item-title
-                  ><v-icon>{{ link.icon }}</v-icon>
-                  {{ link.text }}</v-list-item-title
-                >
-              </v-list-item-content>
-            </v-list-item>
-          </v-list-group>
-
-          <!-- 友情链接 -->
-          <template v-else-if="item.links">
-            <v-list-item
-              dense
-              v-for="(links, cidx) in chunk(item.links, 2)"
-              :key="idx + 'chunk' + cidx"
-            >
-              <v-row>
-                <v-col
-                  class="pa-0"
-                  cols="6"
-                  v-for="link in links"
-                  :key="link.href"
-                >
-                  <v-btn
-                    v-if="item.target != ''"
-                    text
-                    target="_blank"
-                    :href="link.href"
-                  >
-                    <v-icon v-if="link.icon" left>{{ link.icon }}</v-icon>
-                    {{ link.text }}
-                  </v-btn>
-                  <v-btn v-else text :to="link.href">
-                    <v-icon v-if="link.icon" left>{{ link.icon }}</v-icon>
-                    {{ link.text }}
-                  </v-btn>
-                </v-col>
-              </v-row>
-            </v-list-item>
-          </template>
-
-          <!-- 导航菜单 -->
-          <v-list-item
-            dense
-            v-else
-            :key="item.text"
-            :to="item.href"
-            :target="item.target"
-          >
-            <v-list-item-action class="mt-1 mb-1 mr-2" dense>
-              <v-icon class="pa-0 ma-0">{{ item.icon }}</v-icon>
-            </v-list-item-action>
-            <v-list-item-content>
-              <v-list-item-title>
-                {{ item.text }}
-              </v-list-item-title>
-            </v-list-item-content>
-            <v-list-item-action class="mt-1 mb-1 mr-2" v-if="item.count">
-              <v-chip small outlined>{{ item.count }}</v-chip>
-            </v-list-item-action>
-          </v-list-item>
-        </template>
-        <!-- <v-list-item>
-            <v-img class="ma-auto" max-width="128" src="/logo/link.png"></v-img>
-        </v-list-item> -->
-      </v-list>
-    </v-navigation-drawer>
-
-    <v-app-bar
-      class="px-0"
-      color="blue"
-      dense
-      dark
-      app
-      fixed
-      clipped-left
-      extension-height="64"
-    >
-      <template v-if="btn_search && $vuetify.breakpoint.xs" #extension>
-        <v-container fluid>
-          <v-form @submit.prevent="do_search">
-            <v-row>
-              <v-col cols="9">
-                <v-text-field
-                  class="ma-0 pa-0"
-                  hide-details
-                  single-line
-                  solo-inverted
-                  v-model="search"
-                  ref="mobile_search"
-                ></v-text-field>
-              </v-col>
-              <v-col cols="3">
-                <v-btn dark rounded @click="do_mobile_search" color="primary"
-                  >搜索</v-btn
-                >
-              </v-col>
-            </v-row>
-          </v-form>
-        </v-container>
-      </template>
-
-      <v-toolbar-title class="ml-n5 mr-12 align-center">
-        <v-app-bar-nav-icon @click.stop="sidebar = !sidebar">
-          <v-icon>menu</v-icon>
-        </v-app-bar-nav-icon>
-        <span class="cursor-pointer" @click="$router.push('/')">
-          {{ sys.title }}
-        </span>
-      </v-toolbar-title>
-
-      <v-spacer></v-spacer>
-      <template v-if="$vuetify.breakpoint.smAndUp">
-        <v-text-field
-          flat
-          solo-inverted
-          hide-details
-          prepend-inner-icon="search"
-          @keyup.enter="do_search"
-          ref="search"
-          v-model="search"
-          name="name"
-          label="Search"
-          class="d-none d-sm-flex ml-8"
-        >
-        </v-text-field>
-        <v-spacer></v-spacer>
-      </template>
-
-      <v-btn
-        v-else
-        icon
-        class="d-flex d-sm-none"
-        @click="btn_search = !btn_search"
-      >
-        <v-icon>search</v-icon>
-      </v-btn>
-
-      <template v-if="err == 'ok'">
-        <template v-if="user.is_login">
-          <v-menu
-            offset-y
-            right
-            :close-on-content-click="false"
-            v-if="messages.length > 0"
-          >
-            <template v-slot:activator="{ on }">
-              <v-btn v-on="on" icon> <v-icon>notifications</v-icon> </v-btn>
-            </template>
-            <v-list three-line dense width="400">
-              <v-list-item v-for="(msg, idx) in messages" :key="msg.id">
-                <v-list-item-avatar>
-                  <v-icon large color="green" v-if="msg.status == 'success'">
-                    mdi-information
-                  </v-icon>
-                  <v-icon large color="red" v-else>mdi-alert</v-icon>
-                </v-list-item-avatar>
-
-                <v-list-item-content>
-                  <p class="body-2">
-                    {{ msg.data.message }}
-                    <br />
-                    <span>{{ msg.create_time }}</span>
-                  </p>
-                </v-list-item-content>
-
-                <v-list-item-action>
-                  <v-btn @click.prevent="hidemsg(idx, msg.id)">好的</v-btn>
-                </v-list-item-action>
-              </v-list-item>
-            </v-list>
-          </v-menu>
-
-          <v-menu offset-y right>
-            <template v-slot:activator="{ on }">
-              <v-btn v-on="on" class="mr-2" icon large outlined>
-                <v-avatar size="32px"><img :src="user.avatar" /> </v-avatar>
-              </v-btn>
-            </template>
-            <v-list min-width="240">
-              <v-list-item>
-                <v-list-item-avatar>
-                  <img :src="user.avatar" />
-                </v-list-item-avatar>
-                <v-list-item-content>
-                  <v-list-item-title> {{ user.nickname }} </v-list-item-title>
-                  <v-list-item-subtitle>
-                    {{ user.email }}
-                  </v-list-item-subtitle>
-                </v-list-item-content>
-              </v-list-item>
-              <v-divider></v-divider>
-              <v-list-item to="/user/detail">
-                <v-list-item-action>
-                  <v-icon>contacts</v-icon>
-                </v-list-item-action>
-                <v-list-item-title> 用户中心 </v-list-item-title>
-              </v-list-item>
-              <v-list-item to="/user/history">
-                <v-list-item-action>
-                  <v-icon>history</v-icon>
-                </v-list-item-action>
-                <v-list-item-title> 阅读记录 </v-list-item-title>
-              </v-list-item>
-              <v-list-item
-                target="_blank"
-                href="https://github.com/talebook/talebook/issues"
-              >
-                <v-list-item-action>
-                  <v-icon>sms_failed</v-icon>
-                </v-list-item-action>
-                <v-list-item-title> 反馈 </v-list-item-title>
-              </v-list-item>
-              <v-divider></v-divider>
-              <template v-if="user.is_admin">
-                <v-list-item to="/admin/settings">
-                  <v-list-item-action>
-                    <v-icon color="red">mdi-console</v-icon>
-                  </v-list-item-action>
-                  <v-list-item-title> 管理员入口 </v-list-item-title>
-                </v-list-item>
+              <template #prefix>
+                <n-icon><SearchIcon /></n-icon>
               </template>
+            </n-input>
+          </div>
 
-              <v-list-item to="/logout">
-                <v-list-item-action>
-                  <v-icon>exit_to_app</v-icon>
-                </v-list-item-action>
-                <v-list-item-title> 退出 </v-list-item-title>
-              </v-list-item>
-            </v-list>
-          </v-menu>
-        </template>
+          <!-- 搜索按钮 - 移动端 -->
+          <n-button v-else quaternary circle @click="btnSearch = !btnSearch">
+            <template #icon>
+              <n-icon><SearchIcon /></n-icon>
+            </template>
+          </n-button>
 
-        <v-btn v-else class="px-xs-1" to="/login" color="indigo accent-4">
-          <v-icon class="d-none d-sm-flex">account_circle</v-icon> 请登录
-        </v-btn>
-      </template>
-    </v-app-bar>
-  </div>
+          <!-- 用户菜单 -->
+          <template v-if="err === 'ok'">
+            <template v-if="user.is_login">
+              <!-- 通知菜单 -->
+              <n-dropdown
+                v-if="messages.length > 0"
+                :options="messageOptions"
+                @select="handleMessageSelect"
+              >
+                <n-badge :value="messages.length" :max="99">
+                  <n-button quaternary circle>
+                    <template #icon>
+                      <n-icon><BellIcon /></n-icon>
+                    </template>
+                  </n-button>
+                </n-badge>
+              </n-dropdown>
+
+              <!-- 用户菜单 -->
+              <n-dropdown
+                :options="userMenuOptions"
+                @select="handleUserMenuSelect"
+              >
+                <n-avatar
+                  round
+                  :size="32"
+                  :src="user.avatar"
+                  class="user-avatar"
+                />
+              </n-dropdown>
+            </template>
+
+            <!-- 登录按钮 -->
+            <n-button v-else type="primary" @click="router.push('/login')">
+              <template #icon>
+                <n-icon><UserIcon /></n-icon>
+              </template>
+              请登录
+            </n-button>
+          </template>
+        </div>
+      </div>
+
+      <!-- 移动端搜索框 -->
+      <div v-if="isMobile && btnSearch" class="mobile-search">
+        <n-input
+          v-model:value="search"
+          placeholder="搜索"
+          @keyup.enter="doMobileSearch"
+          ref="mobileSearchRef"
+        >
+          <template #prefix>
+            <n-icon><SearchIcon /></n-icon>
+          </template>
+        </n-input>
+        <n-button type="primary" @click="doMobileSearch"> 搜索 </n-button>
+      </div>
+    </n-layout-header>
+    <n-layout has-sider>
+      <!-- 侧边栏 -->
+      <n-layout-sider
+        v-model:collapsed="sidebar"
+        :width="240"
+        :collapsed-width="64"
+        collapse-mode="width"
+        show-trigger
+        content-style="padding: 24px;"
+      >
+        <n-menu
+          :options="menuOptions"
+          :collapsed-width="64"
+          :collapsed-icon-size="22"
+          :accordion="true"
+          :indent="18"
+          @update:value="handleMenuClick"
+        />
+      </n-layout-sider>
+      <!-- 内容区域 -->
+      <n-layout-content>
+        <slot />
+      </n-layout-content>
+    </n-layout>
+  </n-layout>
 </template>
 
-<script>
-export default {
-  data: () => ({
-    err: "",
-    visit_admin_pages: false,
-    sidebar: null,
-    right: null,
-    btn_search: false,
-    search: "",
-    user: {},
-    sys: {
-      books: 0,
-      tags: 0,
-      authors: 0,
-      publishers: 0,
-      series: 0,
-      users: 0,
-      active: 0,
-      version: "",
-      mtime: "",
-      title: "",
-      footer: "",
-      socials: [],
-      friends: [],
-      allow: {
-        register: true,
-        download: true,
-        push: true,
-        read: true,
-      },
-    },
-    messages: [],
-  }),
-  computed: {
-    items: function () {
-      var home_links = [
-        // home
-        { icon: "home", href: "/", text: "首页" },
-      ];
-      var admin_links = [
-        {
-          icon: "mdi-cog",
-          text: "管理",
-          expand: this.$route.path.indexOf("/admin/") == 0,
-          groups: [
-            { icon: "mdi-cog", href: "/admin/settings", text: "系统设置" },
-            {
-              icon: "mdi-human-greeting",
-              href: "/admin/users",
-              text: "用户管理",
-            },
-            {
-              icon: "mdi-library-shelves",
-              href: "/admin/books",
-              text: "图书管理",
-            },
-            { icon: "mdi-import", href: "/admin/imports", text: "导入图书" },
-          ],
-        },
-      ];
-      var nav_links = [
-        { heading: "分类浏览" },
-        {
-          icon: "widgets",
-          href: "/nav",
-          text: "分类导览",
-          count: this.sys.books,
-        },
-        {
-          icon: "mdi-home-group",
-          href: "/publisher",
-          text: "出版社",
-          count: this.sys.publishers,
-        },
-        {
-          icon: "mdi-human-greeting",
-          href: "/author",
-          text: "作者",
-          count: this.sys.authors,
-        },
-        {
-          icon: "mdi-tag-heart",
-          href: "/tag",
-          text: "标签",
-          count: this.sys.tags,
-        },
-        {
-          target: "",
-          links: [
-            {
-              icon: "mdi-library-shelves",
-              href: "/series",
-              text: "丛书",
-              count: this.sys.series,
-            },
-            { icon: "mdi-star-half", href: "/rating", text: "评分" },
-            { icon: "mdi-trending-up", href: "/hot", text: "热度榜单" },
-            { icon: "mdi-history", href: "/recent", text: "所有书籍" },
-          ],
-        },
-      ];
-      var friend_links = [
-        // links
-        { heading: "友情链接" },
-        { links: this.sys.friends, target: "_blank" },
-      ];
-      var sys_links = [
-        { heading: "系统" },
-        {
-          icon: "mdi-history",
-          text: "系统版本",
-          href: "",
-          count: this.sys.version,
-        },
-        { icon: "mdi-human", text: "用户数", href: "", count: this.sys.users },
-        // { icon: "mdi-cellphone", text: "OPDS介绍", href: "/opds-readme", count: "OPDS", target: "_blank" },
-      ];
+<script setup>
+import { ref, computed, onMounted, h } from "vue";
+import { useRoute, useRouter } from "vue-router";
+import { useMessage, useDialog } from "naive-ui";
+import { useNuxtApp } from '#app';
+import {
+  Menu as MenuIcon,
+  Search as SearchIcon,
+  Notifications as BellIcon,
+  Person as UserIcon,
+  Settings as SettingsIcon,
+  People as ContactsIcon,
+  Time as HistoryIcon,
+  Chatbubbles as ChatbubblesIcon,
+  LogOut as LogOutIcon,
+  Library as LibraryIcon,
+  People as PeopleIcon,
+  Home as HomeIcon,
+  Business as BusinessIcon,
+  Bookmark as TagIcon,
+  Bookmark as BookmarkIcon,
+  Star as StarIcon,
+  TrendingUp as TrendingUpIcon,
+  Information as InformationIcon,
+} from "@vicons/ionicons5";
+import { useMainStore } from "~/store";
 
-      return home_links
-        .concat(this.user.is_admin ? admin_links : [])
-        .concat(nav_links)
-        .concat(this.sys.friends.length > 0 ? friend_links : [])
-        .concat(sys_links);
-    },
+const message = useMessage();
+const dialog = useDialog();
+const route = useRoute();
+const router = useRouter();
+const mainStore = useMainStore();
+const { $backend } = useNuxtApp();
+
+// 响应式数据
+const btnSearch = ref(false);
+const search = ref("");
+const err = ref("ok");
+const user = ref({});
+const sys = ref({
+  books: 0,
+  tags: 0,
+  authors: 0,
+  publishers: 0,
+  series: 0,
+  users: 0,
+  active: 0,
+  version: "",
+  mtime: "",
+  title: "",
+  footer: "",
+  socials: [],
+  friends: [],
+  allow: {
+    register: true,
+    download: true,
+    push: true,
+    read: true,
   },
-  mounted() {
-    this.visit_admin_pages = this.$route.path.indexOf("/admin/") == 0;
-    this.sidebar = this.$vuetify.breakpoint.lgAndUp;
-    this.$backend("/user/info").then((rsp) => {
-      this.err = rsp.err;
-      this.sys = rsp.sys;
-      this.user = rsp.user;
-      this.$store.commit("login", rsp);
-      this.$store.commit("set_title", rsp.sys.title);
-    });
-    this.$backend("/user/messages").then((rsp) => {
-      if (rsp.err == "ok") {
-        this.messages = rsp.messages;
-      }
-    });
-  },
-  methods: {
-    chunk: function (arr, len) {
-      var e = arr.length;
-      var r = [];
-      for (var idx = 0; idx < e; idx += len) {
-        var n = Math.min(idx + len, e);
-        r.push(arr.slice(idx, n));
-      }
-      return r;
+});
+const messages = ref([]);
+const mobileSearchRef = ref(null);
+
+// 计算属性
+const isMobile = computed(() => {
+  return typeof window !== "undefined" && window.innerWidth < 768;
+});
+
+// 侧边栏状态
+const sidebar = ref(false);
+
+// 菜单选项
+const menuOptions = computed(() => {
+  const homeLinks = [
+    {
+      label: "首页",
+      key: "home",
+      icon: () => h("span", { class: "menu-icon" }, [h(HomeIcon)]),
+      path: "/",
     },
-    do_mobile_search: function () {
-      if (this.search.trim() != "") {
-        this.$router.push("/search?name=" + this.search.trim());
-      } else {
-        this.$refs.mobile_search.focus();
-      }
+  ];
+
+  const adminLinks = user.value.is_admin
+    ? [
+        {
+          label: "管理",
+          key: "admin",
+          icon: () => h("span", { class: "menu-icon" }, [h(SettingsIcon)]),
+          children: [
+            {
+              label: "系统设置",
+              key: "admin-settings",
+              icon: () => h("span", { class: "menu-icon" }, [h(SettingsIcon)]),
+              path: "/admin/settings",
+            },
+            {
+              label: "用户管理",
+              key: "admin-users",
+              icon: () => h("span", { class: "menu-icon" }, [h(PeopleIcon)]),
+              path: "/admin/users",
+            },
+            {
+              label: "图书管理",
+              key: "admin-books",
+              icon: () => h("span", { class: "menu-icon" }, [h(LibraryIcon)]),
+              path: "/admin/books",
+            },
+            {
+              label: "导入图书",
+              key: "admin-imports",
+              icon: () => h("span", { class: "menu-icon" }, [h(BookmarkIcon)]),
+              path: "/admin/imports",
+            },
+          ],
+        },
+      ]
+    : [];
+
+  const navLinks = [
+    {
+      label: "分类浏览",
+      key: "nav-category",
+      type: "group",
+      children: [
+        {
+          label: "分类导览",
+          key: "nav",
+          icon: () => h("span", { class: "menu-icon" }, [h(HomeIcon)]),
+          path: "/nav",
+          extra: sys.value.books > 0 ? sys.value.books.toString() : undefined,
+        },
+        {
+          label: "出版社",
+          key: "publisher",
+          icon: () => h("span", { class: "menu-icon" }, [h(BusinessIcon)]),
+          path: "/publisher",
+          extra:
+            sys.value.publishers > 0
+              ? sys.value.publishers.toString()
+              : undefined,
+        },
+        {
+          label: "作者",
+          key: "author",
+          icon: () => h("span", { class: "menu-icon" }, [h(PeopleIcon)]),
+          path: "/author",
+          extra:
+            sys.value.authors > 0 ? sys.value.authors.toString() : undefined,
+        },
+        {
+          label: "标签",
+          key: "tag",
+          icon: () => h("span", { class: "menu-icon" }, [h(TagIcon)]),
+          path: "/tag",
+          extra: sys.value.tags > 0 ? sys.value.tags.toString() : undefined,
+        },
+        {
+          label: "丛书",
+          key: "series",
+          icon: () => h("span", { class: "menu-icon" }, [h(BookmarkIcon)]),
+          path: "/series",
+          extra: sys.value.series > 0 ? sys.value.series.toString() : undefined,
+        },
+        {
+          label: "评分",
+          key: "rating",
+          icon: () => h("span", { class: "menu-icon" }, [h(StarIcon)]),
+          path: "/rating",
+        },
+        {
+          label: "热度榜单",
+          key: "hot",
+          icon: () => h("span", { class: "menu-icon" }, [h(TrendingUpIcon)]),
+          path: "/hot",
+        },
+        {
+          label: "所有书籍",
+          key: "recent",
+          icon: () => h("span", { class: "menu-icon" }, [h(HistoryIcon)]),
+          path: "/recent",
+        },
+      ],
     },
-    do_search: function () {
-      if (this.search.trim() != "") {
-        this.$router.push("/search?name=" + this.search.trim());
-      } else {
-        this.$refs.search.focus();
-      }
+  ];
+
+  const friendLinks =
+    sys.value.friends.length > 0
+      ? [
+          {
+            label: "友情链接",
+            key: "nav-friends",
+            type: "group",
+            children: sys.value.friends.map((friend) => ({
+              label: friend.text,
+              key: `friend-${friend.href}`,
+              icon: friend.icon
+                ? () =>
+                    h("span", { class: "menu-icon" }, [
+                      h("i", { class: friend.icon }),
+                    ])
+                : undefined,
+              path: friend.href,
+              external: true,
+            })),
+          },
+        ]
+      : [];
+
+  const sysLinks = [
+    {
+      label: "系统",
+      key: "nav-system",
+      type: "group",
+      children: [
+        {
+          label: "系统版本",
+          key: "version",
+          icon: () => h("span", { class: "menu-icon" }, [h(InformationIcon)]),
+          extra: sys.value.version ? sys.value.version.toString() : undefined,
+        },
+        {
+          label: "用户数",
+          key: "users",
+          icon: () => h("span", { class: "menu-icon" }, [h(PeopleIcon)]),
+          extra: sys.value.users > 0 ? sys.value.users.toString() : undefined,
+        },
+      ],
     },
-    hidemsg: function (idx, msgid) {
-      this.$backend("/user/messages", {
-        method: "POST",
-        body: JSON.stringify({ id: msgid }),
-      }).then((rsp) => {
-        if (rsp.err == "ok") {
-          this.messages.splice(idx, 1);
-        }
-      });
+  ];
+
+  return [
+    ...homeLinks,
+    ...adminLinks,
+    ...navLinks,
+    ...friendLinks,
+    ...sysLinks,
+  ];
+});
+
+// 消息选项
+const messageOptions = computed(() => {
+  return messages.value.map((msg) => ({
+    label: () =>
+      h("div", { class: "message-item" }, [
+        h("div", { class: "message-content" }, [
+          h("div", { class: "message-text" }, msg.data.message),
+          h("div", { class: "message-time" }, msg.create_time),
+        ]),
+      ]),
+    key: msg.id,
+  }));
+});
+
+// 用户菜单选项
+const userMenuOptions = computed(() => {
+  return [
+    {
+      label: "用户中心",
+      key: "user-detail",
+      icon: () => h("span", { class: "menu-icon" }, [h(ContactsIcon)]),
+      path: "/user/detail",
     },
-  },
+    {
+      label: "阅读记录",
+      key: "user-history",
+      icon: () => h("span", { class: "menu-icon" }, [h(HistoryIcon)]),
+      path: "/user/history",
+    },
+    {
+      label: "反馈",
+      key: "feedback",
+      icon: () => h("span", { class: "menu-icon" }, [h(ChatbubblesIcon)]),
+      path: "https://github.com/talebook/talebook/issues",
+      external: true,
+    },
+    ...(user.value.is_admin
+      ? [
+          {
+            type: "divider",
+            key: "d1",
+          },
+          {
+            label: "管理员入口",
+            key: "admin-settings",
+            icon: () =>
+              h(
+                "span",
+                { class: "menu-icon", style: "color: var(--error-color)" },
+                [h(SettingsIcon)]
+              ),
+            path: "/admin/settings",
+          },
+        ]
+      : []),
+    {
+      type: "divider",
+      key: "d2",
+    },
+    {
+      label: "退出",
+      key: "logout",
+      icon: () => h("span", { class: "menu-icon" }, [h(LogOutIcon)]),
+      path: "/logout",
+    },
+  ];
+});
+
+// 方法
+const chunk = (arr, len) => {
+  const e = arr.length;
+  const r = [];
+  for (let idx = 0; idx < e; idx += len) {
+    const n = Math.min(idx + len, e);
+    r.push(arr.slice(idx, n));
+  }
+  return r;
 };
+
+const doSearch = () => {
+  if (search.value.trim() !== "") {
+    router.push(`/search?name=${search.value.trim()}`);
+  }
+};
+
+const doMobileSearch = () => {
+  if (search.value.trim() !== "") {
+    router.push(`/search?name=${search.value.trim()}`);
+  } else {
+    mobileSearchRef.value?.focus();
+  }
+};
+
+const handleMessageSelect = (key) => {
+  const index = messages.value.findIndex((msg) => msg.id === key);
+  if (index !== -1) {
+    hideMessage(index, key);
+  }
+};
+
+const handleUserMenuSelect = (key, option) => {
+  if (option.path) {
+    if (option.external) {
+      window.open(option.path, "_blank");
+    } else {
+      router.push(option.path);
+    }
+  }
+};
+
+const handleMenuClick = (key) => {
+  // 查找菜单项
+  const findMenuItem = (items) => {
+    for (const item of items) {
+      if (item.key === key && item.path) {
+        return item;
+      }
+      if (item.children) {
+        const found = findMenuItem(item.children);
+        if (found) return found;
+      }
+    }
+    return null;
+  };
+
+  // 在所有菜单选项中查找
+  const menuItem = findMenuItem(menuOptions.value);
+  if (menuItem) {
+    router.push(menuItem.path);
+  }
+};
+
+const hideMessage = async (index, msgId) => {
+  try {
+    const rsp = await $backend("/user/messages", {
+      method: "POST",
+      body: JSON.stringify({ id: msgId }),
+    });
+
+    if (rsp.err === "ok") {
+      messages.value.splice(index, 1);
+    } else {
+      message.error("操作失败");
+    }
+  } catch (error) {
+    message.error("网络错误");
+  }
+};
+
+// 生命周期
+onMounted(async () => {
+  try {
+    const rsp = await $backend("/user/info");
+    err.value = rsp.err;
+    sys.value = rsp.sys;
+    user.value = rsp.user;
+    mainStore.login(rsp);
+    mainStore.set_title(rsp.sys.title);
+
+    // 获取消息
+    const msgRsp = await $backend("/user/messages");
+    if (msgRsp.err === "ok") {
+      messages.value = msgRsp.messages;
+    }
+  } catch (error) {
+    console.error("Failed to fetch user info:", error);
+  }
+
+  // 设置初始侧边栏状态
+  // sidebar.value = !isMobile.value;
+});
 </script>
+
+<style scoped>
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.header {
+  background-color: var(--primary-color);
+  color: white;
+  padding: 0 16px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.site-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.search-box {
+  width: 200px;
+}
+
+.mobile-search {
+  padding: 12px 16px;
+  background-color: var(--primary-color);
+  display: flex;
+  gap: 8px;
+}
+
+.user-avatar {
+  cursor: pointer;
+}
+
+.menu-icon {
+  font-size: 18px;
+}
+
+.message-item {
+  padding: 8px 0;
+}
+
+.message-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.message-text {
+  font-weight: 500;
+}
+
+.message-time {
+  font-size: 0.8rem;
+  color: var(--text-color-3);
+}
+</style>

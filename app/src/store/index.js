@@ -1,46 +1,68 @@
-export const state = () => ({
-    nav: true, loading: true, count: 0, user: {
-        is_admin: false, is_login: false, nickname: "", kindle_email: "", avatar: "",
-    }, alert: {
-        to: "", msg: "", type: "", show: false,
-    }, sys: {
-        socials: [], allow: {},
+import { defineStore } from 'pinia'
+
+export const useMainStore = defineStore('main', {
+  state: () => ({
+    nav: true,
+    loading: true,
+    count: 0,
+    user: {
+      is_admin: false,
+      is_login: false,
+      nickname: "",
+      kindle_email: "",
+      avatar: "",
+    },
+    alert: {
+      to: "",
+      msg: "",
+      type: "",
+      show: false,
+    },
+    sys: {
+      socials: [],
+      allow: {},
     },
     site_title: "首页",
     site_title_template: "%s | talebook"
-})
+  }),
 
-export const mutations = {
-    loading(state) {
-        state.loading = true;
-    }, loaded(state) {
-        state.loading = false;
-    }, /*
-    puremode(state, pure) {
-        if (pure) {
-            state.nav = false;
-        } else {
-            state.nav = true;
-        }
+  actions: {
+    loading() {
+      this.loading = true
     },
-    */
-    navbar(state, nav) {
-        state.nav = nav;
-    }, increment(state) {
-        state.count++
-    }, login(state, data) {
-        if (data != undefined) {
-            state.sys = data.sys;
-            state.user = data.user;
-        }
-    }, alert(state, v) {
-        state.alert.to = v.to;
-        state.alert.type = v.type;
-        state.alert.msg = v.msg;
-        state.alert.show = true;
-    }, close_alert(state) {
-        state.alert.show = false;
-    }, set_title(state, v) {
-        state.site_title_template = ' %s | ' + v;
+
+    loaded() {
+      this.loading = false
+    },
+
+    navbar(nav) {
+      this.nav = nav
+    },
+
+    increment() {
+      this.count++
+    },
+
+    login(data) {
+      if (data !== undefined) {
+        this.sys = data.sys
+        this.user = data.user
+      }
+    },
+
+    alert(v) {
+      this.alert.to = v.to
+      this.alert.type = v.type
+      this.alert.msg = v.msg
+      this.alert.show = true
+    },
+
+    close_alert() {
+      this.alert.show = false
+    },
+
+    set_title(v) {
+      this.site_title_template = ' %s | ' + v
     }
-}
+  }
+})

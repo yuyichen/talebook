@@ -1,0 +1,65 @@
+export default defineNuxtPlugin((nuxtApp) => {
+  // 设置全局主题
+  nuxtApp.provide('themeOverrides', {
+    common: {
+      primaryColor: '#18a058',
+      primaryColorHover: '#36ad6a',
+      primaryColorPressed: '#0c7a43',
+      primaryColorSuppl: '#36ad6a',
+      infoColor: '#2080f0',
+      infoColorHover: '#4098fc',
+      infoColorPressed: '#1060c9',
+      successColor: '#52c41a',
+      successColorHover: '#73d13d',
+      successColorPressed: '#389e0d',
+      warningColor: '#f0a020',
+      warningColorHover: '#fcb040',
+      warningColorPressed: '#d48806',
+      errorColor: '#f02020',
+      errorColorHover: '#fc4040',
+      errorColorPressed: '#c91010',
+      textColorBase: '#333',
+      textColor1: '#333',
+      textColor2: '#666',
+      textColor3: '#999',
+      bodyColor: '#fff',
+      cardColor: '#fff',
+      modalColor: '#fff',
+      popoverColor: '#fff',
+      tableColor: '#fff',
+      borderColor: '#eee',
+      dividerColor: '#eee'
+    },
+    dark: {
+      common: {
+        primaryColor: '#18a058',
+        primaryColorHover: '#36ad6a',
+        primaryColorPressed: '#0c7a43',
+        primaryColorSuppl: '#36ad6a',
+        infoColor: '#2080f0',
+        infoColorHover: '#4098fc',
+        infoColorPressed: '#1060c9',
+        successColor: '#52c41a',
+        successColorHover: '#73d13d',
+        successColorPressed: '#389e0d',
+        warningColor: '#f0a020',
+        warningColorHover: '#fcb040',
+        warningColorPressed: '#d48806',
+        errorColor: '#f02020',
+        errorColorHover: '#fc4040',
+        errorColorPressed: '#c91010',
+        textColorBase: 'rgba(255, 255, 255, 0.9)',
+        textColor1: 'rgba(255, 255, 255, 0.9)',
+        textColor2: 'rgba(255, 255, 255, 0.7)',
+        textColor3: 'rgba(255, 255, 255, 0.5)',
+        bodyColor: '#101014',
+        cardColor: '#18181c',
+        modalColor: '#18181c',
+        popoverColor: '#18181c',
+        tableColor: '#18181c',
+        borderColor: 'rgba(255, 255, 255, 0.1)',
+        dividerColor: 'rgba(255, 255, 255, 0.09)'
+      }
+    }
+  })
+})

@@ -1,172 +1,329 @@
 <template>
-  <div id="txt-main">
-    <v-navigation-drawer v-model="sidebar" app fixed width="240"
-                         class="d-flex flex-column" style="height: 100%"
-                         :clipped="$vuetify.breakpoint.lgAndUp">
-      <v-subheader style="height: 48px">{{ name }}</v-subheader>
-      <v-virtual-scroll
-        style="height: calc(100% - 48px)"
-        :items="content" bench="20"
-        item-height="40">
-        <template v-slot:default="{item,index}">
-          <v-list-item dense :key="item.title" @click="getNovelContent(index)"
-                       :color="selected===index?'primary':''">
-            <v-list-item-content>
-              <v-list-item-title>
-                {{ item.title }}
-              </v-list-item-title>
-            </v-list-item-content>
-          </v-list-item>
-        </template>
-      </v-virtual-scroll>
-    </v-navigation-drawer>
+  <div class="txt-reader-page">
+    <!-- 侧边栏 -->
+    <n-drawer
+      v-model:show="sidebar"
+      :width="240"
+      placement="left"
+      display-directive="show"
+    >
+      <div class="drawer-header">
+        <h3>{{ name }}</h3>
+      </div>
+      <div class="drawer-content">
+        <n-virtual-list
+          :items="content"
+          :item-size="40"
+          :item-resizable="true"
+          style="height: calc(100% - 48px)"
+        >
+          <template #default="{ item, index }">
+            <n-list-item
+              :key="item.title"
+              @click="getNovelContent(index)"
+              :class="{ 'selected-item': selected === index }"
+            >
+              <n-thing :title="item.title" />
+            </n-list-item>
+          </template>
+        </n-virtual-list>
+      </div>
+    </n-drawer>
 
-    <v-app-bar class="px-0" color="blue" dense dark app fixed clipped-left extension-height="64">
-
-      <v-toolbar-title class="ml-n5 mr-12 align-center">
-        <v-app-bar-nav-icon @click.stop="sidebar = !sidebar">
-          <v-icon>menu</v-icon>
-        </v-app-bar-nav-icon>
-        <span class="cursor-pointer" @click="$router.push('/')">
+    <!-- 顶部导航栏 -->
+    <n-layout-header class="header">
+      <div class="header-content">
+        <n-button
+          quaternary
+          circle
+          @click="sidebar = !sidebar"
+        >
+          <template #icon>
+            <n-icon><MenuIcon /></n-icon>
+          </template>
+        </n-button>
+        <div class="site-title" @click="$router.push('/')">
           {{ name }}
-        </span>
-      </v-toolbar-title>
+        </div>
+      </div>
+    </n-layout-header>
 
-    </v-app-bar>
-    <div>
-      <v-container>
-        <v-card outlined v-if="!inited" width="300" style="margin: 0 auto">
-          <v-card-title ref="tipTitle">{{ tip.title }}</v-card-title>
-          <v-card-text ref="tip">
-            {{ tip.content }}
-          </v-card-text>
-        </v-card>
+    <!-- 主要内容区 -->
+    <div class="main-content">
+      <n-card v-if="!inited" class="tip-card" :bordered="false">
+        <template #header>
+          {{ tip.title }}
+        </template>
+        {{ tip.content }}
+      </n-card>
+
+      <div v-else>
+        <div v-if="loading" class="loading-container">
+          <n-spin size="large" />
+          <span>加载中...</span>
+        </div>
         <div v-else>
-          <div class="d-flex justify-center align-content-center" style="margin-bottom: 20px" v-if="loading">
-            <v-progress-circular color="primary" indeterminate size="28" style="margin-right: 10px"/>
-            加载中...
-          </div>
-          <div style="word-wrap: break-word" v-html="novelContent" v-show="!loading"/>
-          <div class="d-flex justify-space-between" v-show="novelContent && !loading">
-            <v-btn color="info" elevation="0" :disabled="selected===0"
-                   @click="getNovelContent(selected-1)">
+          <div class="novel-content" v-html="novelContent" v-show="!loading"></div>
+          <div v-show="novelContent && !loading" class="navigation-buttons">
+            <n-button
+              type="info"
+              :disabled="selected === 0"
+              @click="getNovelContent(selected - 1)"
+            >
               上一章
-            </v-btn>
-            <v-btn outlined elevation="0" @click="sidebar=true" v-show="!sidebar">
+            </n-button>
+            <n-button
+              outlined
+              @click="sidebar = true"
+              v-show="!sidebar"
+            >
               目录
-            </v-btn>
-            <v-btn color="primary" elevation="0" :disabled="selected===content.length-1"
-                   @click="getNovelContent(selected+1)">
+            </n-button>
+            <n-button
+              type="primary"
+              :disabled="selected === content.length - 1"
+              @click="getNovelContent(selected + 1)"
+            >
               下一章
-            </v-btn>
+            </n-button>
           </div>
         </div>
-        <app-footer v-if="$store.state.nav"></app-footer>
-      </v-container>
+      </div>
+
+      <AppFooter v-if="mainStore.navbar" />
     </div>
   </div>
 </template>
 
-<script>
+<script setup>
+import { ref, reactive, onMounted, nextTick } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { useMainStore } from '~/store'
 import AppFooter from "~/components/AppFooter.vue"
+import { Menu as MenuIcon } from '@vicons/ionicons5'
+import { useNuxtApp } from '#app'
 
-export default {
-  name: "TxtReader",
-  components: {AppFooter},
-  data: () => ({
-    sidebar: null,
-    bookid: null,
-    items: ["1", "2", "3"],
-    content: [],
-    inited: false,
-    wait: 0,
-    name: null,
-    novelContent: '',
-    selected: -1,
-    loading: true,
-    tip: {
-      title: '正在解析',
-      content: '正在解析目录，请稍后...'
+const { $backend } = useNuxtApp();
+
+const route = useRoute()
+const router = useRouter()
+const mainStore = useMainStore()
+
+// 响应式数据
+const sidebar = ref(false)
+const bookid = ref(null)
+const items = ref(["1", "2", "3"])
+const content = ref([])
+const inited = ref(false)
+const wait = ref(0)
+const name = ref(null)
+const novelContent = ref('')
+const selected = ref(-1)
+const loading = ref(true)
+const tip = reactive({
+  title: '正在解析',
+  content: '正在解析目录，请稍后...'
+})
+
+// 方法
+const init = async () => {
+  try {
+    loading.value = true
+    bookid.value = route.params.bid
+    mainStore.navbar(false)
+
+    const rsp = await $backend(`/book/txt/init?id=${bookid.value}&test=0`)
+
+    if (rsp.err !== "ok") {
+      tip.title = "错误"
+      tip.content = rsp.msg
+      return
     }
-  }),
-  created() {
-    this.bookid = this.$route.params.bid;
-    this.$store.commit("navbar", false);
-    this.init()
-  },
-  methods: {
-    init() {
-      this.loading = true
-      this.$backend(`/book/txt/init?id=${this.bookid}&test=0`)
-        .then(rsp => {
-          if (rsp.err !== "ok") {
-            this.tip.title = "错误"
-            this.tip.content = rsp.msg
-            return
-          }
-          if (rsp.msg === "已解析") {
-            this.inited = true
-            this.content = rsp.data.content
-            this.name = rsp.data.name
-            this.getNovelContent(0)
-          } else {
-            this.wait = parseInt(rsp.data.wait)
-            let queLen = parseInt(rsp.data.que)
-            this.name = rsp.data.name
-            if (queLen > 0) {
-              this.tip.title = "队列中"
-              this.tip.content = "前方等待" + queLen + "个转换待完成，已步入后台队列"
-              return;
+
+    if (rsp.msg === "已解析") {
+      inited.value = true
+      content.value = rsp.data.content
+      name.value = rsp.data.name
+      getNovelContent(0)
+    } else {
+      wait.value = parseInt(rsp.data.wait)
+      let queLen = parseInt(rsp.data.que)
+      name.value = rsp.data.name
+
+      if (queLen > 0) {
+        tip.title = "队列中"
+        tip.content = "前方等待" + queLen + "个转换待完成，已步入后台队列"
+        return
+      }
+
+      let intvl = setInterval(() => {
+        wait.value--
+        tip.content = "首次阅读，正在解析目录，请稍后... " + wait.value
+
+        if (wait.value <= 0) {
+          clearInterval(intvl)
+          tip.content = "超时未完成，可继续等待稍后刷新尝试"
+          tip.title = "解析超时"
+          return
+        }
+
+        if (wait.value % 5 !== 0) return
+
+        $backend(`/book/txt/init?id=${bookid.value}&test=1`)
+          .then(res => {
+            if (res.err === "ok" && res.msg === "已解析") {
+              inited.value = true
+              content.value = res.data.content
+              name.value = res.data.name
+              getNovelContent(0)
+              clearInterval(intvl)
             }
-            let intvl = setInterval(() => {
-              this.wait--;
-              this.tip.content = "首次阅读，正在解析目录，请稍后... " + this.wait
-              if (this.wait <= 0) {
-                clearInterval(intvl)
-                this.tip.content = "超时未完成，可继续等待稍后刷新尝试"
-                this.tip.title = "解析超时"
-                return
-              }
-              if (this.wait % 5 !== 0) return;
-              this.$backend(`/book/txt/init?id=${this.bookid}&test=1`,)
-                .then(res => {
-                  if (res.err === "ok" && res.msg === "已解析") {
-                    this.inited = true;
-                    this.content = res.data.content
-                    this.name = res.data.name
-                    this.getNovelContent(0)
-                    clearInterval(intvl)
-                  }
-                })
-            }, 1000)
-          }
-        }).finally(() => {
-        this.loading = false
-      });
-    },
-    getNovelContent(i) {
-      if (this.selected === i) return;
-      this.selected = i
-      const {title, start, end} = {...this.content[i]}
-      this.loading = true
-      console.log(title, start, end)
-      this.$backend(`/read/txt?id=${this.bookid}&start=${start}&end=${end}`)
-        .then(res => {
-          if (res.err !== "ok") {
-            this.novelContent = "获取正文失败！" + res.msg
-            return
-          }
-          this.novelContent = title + "<br>" + res.content
-        }).finally(() => {
-        this.loading = false
-        document.getElementsByTagName('html')[0].style.scrollBehavior = 'smooth'
-        document.getElementsByTagName('html')[0].scrollTop = 0
-      })
+          })
+      }, 1000)
     }
+  } catch (error) {
+    console.error('Init txt reader error:', error)
+    tip.title = "错误"
+    tip.content = "初始化失败"
+  } finally {
+    loading.value = false
   }
 }
+
+const getNovelContent = async (i) => {
+  if (selected.value === i) return
+
+  selected.value = i
+  const { title, start, end } = { ...content.value[i] }
+  loading.value = true
+
+  try {
+    const res = await $backend(`/read/txt?id=${bookid.value}&start=${start}&end=${end}`)
+
+    if (res.err !== "ok") {
+      novelContent.value = "获取正文失败！" + res.msg
+      return
+    }
+
+    novelContent.value = title + "<br>" + res.content
+
+    // 滚动到顶部
+    await nextTick()
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    })
+  } catch (error) {
+    console.error('Get novel content error:', error)
+    novelContent.value = "获取正文失败！"
+  } finally {
+    loading.value = false
+  }
+}
+
+// 生命周期
+onMounted(() => {
+  init()
+})
+
+// 设置页面标题
+useHead({
+  title: 'TXT阅读器'
+})
 </script>
 
 <style scoped>
+.txt-reader-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
 
+.header {
+  background-color: var(--primary-color);
+  color: white;
+  padding: 0 16px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.header-content {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.site-title {
+  margin-left: 12px;
+  font-size: 1.1rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.drawer-header {
+  padding: 16px;
+  border-bottom: 1px solid var(--divider-color);
+}
+
+.drawer-header h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 500;
+}
+
+.drawer-content {
+  height: calc(100% - 48px);
+}
+
+.selected-item {
+  background-color: var(--primary-color-hover);
+  color: var(--primary-color);
+}
+
+.main-content {
+  flex: 1;
+  padding: 16px;
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.tip-card {
+  max-width: 400px;
+  margin: 40px auto;
+  text-align: center;
+}
+
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin: 40px 0;
+  gap: 16px;
+}
+
+.novel-content {
+  line-height: 1.8;
+  margin-bottom: 24px;
+  white-space: pre-wrap;
+}
+
+.novel-content >>> p {
+  margin-bottom: 16px;
+  text-indent: 2em;
+}
+
+.navigation-buttons {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 24px;
+}
 </style>

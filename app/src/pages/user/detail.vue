@@ -1,126 +1,316 @@
 <template>
-    <v-form ref="form" @submit.prevent="save">
-        <v-row align=start>
-            <v-col cols=3><v-subheader class="pa-0 float-right" >头像</v-subheader></v-col>
-            <v-col cols=9>
-                <v-img class="float-left" height=80 contain :src="user.avatar"></v-img>
-                <v-subheader class="" >
-                    <a href="https://cravatar.cn/avatar" target="_blank">点击修改</a>
-                </v-subheader>
-            </v-col>
-
-            <v-col cols=3><v-subheader class="pa-0 float-right" >用户名</v-subheader></v-col>
-            <v-col cols=9><p class="pt-3 mb-0">{{user.username}}</p></v-col>
-
-            <v-col cols=3><v-subheader class="pa-0 float-right" >邮箱</v-subheader></v-col>
-            <v-col cols=9><p class="pt-3 mb-0">{{user.email}}<a href='#' v-if="!user.is_active" @click='send_active_email'>重新发送激活邮件</a></p></v-col>
-
-            <v-col cols=3><v-subheader class="pa-0 float-right" >密码</v-subheader></v-col>
-            <v-col cols=9>
-                <v-subheader class="pa-0" >
-                    <a href="#" @click.stop="show_pass = ! show_pass">点击修改</a>
-                </v-subheader>
-                <div v-if="show_pass">
-                    <v-text-field solo v-model="user.password0" label="当前密码" type="password" autocomplete="new-password0" :rules="[rules.pass]" ></v-text-field>
-                    <v-text-field solo v-model="user.password1" label="新密码"   type="password" autocomplete="new-password1" :rules="[rules.pass]" ></v-text-field>
-                    <v-text-field solo v-model="user.password2" label="确认密码" type="password" autocomplete="new-password2" :rules="[valid]"      ></v-text-field>
+  <div class="user-detail-page">
+    <n-card title="用户中心">
+      <n-form ref="formRef" :model="user" :rules="rules" label-placement="left">
+        <n-grid x-gap="12" y-gap="12" cols="1 s:2">
+          <!-- 头像 -->
+          <n-grid-item :span="1">
+            <n-form-item label="头像">
+              <div class="avatar-container">
+                <n-avatar :size="80" :src="user.avatar" />
+                <div class="avatar-tip">
+                  <a href="https://cravatar.cn/avatar" target="_blank">点击修改</a>
                 </div>
-            </v-col>
+              </div>
+            </n-form-item>
+          </n-grid-item>
 
-            <v-col cols=3><v-subheader class="pa-0 float-right" >昵称</v-subheader></v-col>
-            <v-col cols=9> <v-text-field solo v-model="user.nickname" label="昵称" type="text" autocomplete="new-nickname" :rules="[rules.nick]"></v-text-field> </v-col>
+          <!-- 用户名 -->
+          <n-grid-item :span="1">
+            <n-form-item label="用户名">
+              <n-input :value="user.username" readonly />
+            </n-form-item>
+          </n-grid-item>
 
-            <v-col cols=3><v-subheader class="pa-0 float-right" >Kindle地址</v-subheader></v-col>
-            <v-col cols=9> <v-text-field solo v-model="user.kindle_email" label="Kindle" type="text" autocomplete="new-email" :rules="[rules.email]"></v-text-field> </v-col>
-            <v-col cols=12>
-                <div class="text-center">
-                    <v-btn dark large rounded color="orange" @click="save">保存</v-btn>
+          <!-- 邮箱 -->
+          <n-grid-item :span="1">
+            <n-form-item label="邮箱">
+              <div class="email-container">
+                <n-input :value="user.email" readonly />
+                <a v-if="!user.is_active" href="#" @click.prevent="sendActiveEmail" class="resend-link">
+                  重新发送激活邮件
+                </a>
+              </div>
+            </n-form-item>
+          </n-grid-item>
+
+          <!-- 密码 -->
+          <n-grid-item :span="2">
+            <n-form-item label="密码">
+              <div class="password-container">
+                <a href="#" @click.prevent="showPass = !showPass">点击修改</a>
+                <div v-if="showPass" class="password-form">
+                  <n-form-item path="password0">
+                    <n-input
+                      v-model:value="user.password0"
+                      type="password"
+                      placeholder="当前密码"
+                      show-password-on="mousedown"
+                    />
+                  </n-form-item>
+                  <n-form-item path="password1">
+                    <n-input
+                      v-model:value="user.password1"
+                      type="password"
+                      placeholder="新密码"
+                      show-password-on="mousedown"
+                    />
+                  </n-form-item>
+                  <n-form-item path="password2">
+                    <n-input
+                      v-model:value="user.password2"
+                      type="password"
+                      placeholder="确认密码"
+                      show-password-on="mousedown"
+                    />
+                  </n-form-item>
                 </div>
-            </v-col>
-        </v-row>
-    </v-form>
+              </div>
+            </n-form-item>
+          </n-grid-item>
+
+          <!-- 昵称 -->
+          <n-grid-item :span="1">
+            <n-form-item label="昵称" path="nickname">
+              <n-input
+                v-model:value="user.nickname"
+                placeholder="请输入昵称"
+              />
+            </n-form-item>
+          </n-grid-item>
+
+          <!-- Kindle地址 -->
+          <n-grid-item :span="1">
+            <n-form-item label="Kindle地址" path="kindle_email">
+              <n-input
+                v-model:value="user.kindle_email"
+                placeholder="请输入Kindle邮箱地址"
+              />
+            </n-form-item>
+          </n-grid-item>
+        </n-grid>
+
+        <div class="save-button">
+          <n-button type="primary" size="large" @click="save">
+            保存
+          </n-button>
+        </div>
+      </n-form>
+    </n-card>
+  </div>
 </template>
 
-<script>
-export default {
-    data: () => ({
-        user: {},
-        show_pass: false,
-        rules: {
-            pass: v => v == undefined || v.length == 0 || v.length >= 8 || 'Min 8 characters',
-            nick: v => v == undefined || v.length == 0 || v.length >= 2 || 'Min 2 characters',
-            email: function (email) {
-                var re = /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
-                return email == undefined || email.length == 0 || re.test(email) || "Invalid email format";
-            },
-        },
-    }),
-    async asyncData({ params, app, res }) {
-        if ( res !== undefined ) {
-            res.setHeader('Cache-Control', 'no-cache');
+<script setup>
+import { ref, reactive, onMounted } from 'vue'
+import { useMessage, useDialog } from 'naive-ui'
+import { useRoute, useRouter } from 'vue-router'
+import { useMainStore } from '~/store'
+
+const message = useMessage()
+const dialog = useDialog()
+const route = useRoute()
+const router = useRouter()
+const mainStore = useMainStore()
+
+// 响应式数据
+const formRef = ref(null)
+const showPass = ref(false)
+const user = reactive({
+  username: '',
+  email: '',
+  avatar: '',
+  is_active: false,
+  password0: '',
+  password1: '',
+  password2: '',
+  nickname: '',
+  kindle_email: ''
+})
+
+// 验证规则
+const rules = {
+  password0: {
+    validator: (rule, value) => {
+      if (showPass.value && !value) {
+        return new Error('请输入当前密码')
+      }
+      return true
+    },
+    trigger: 'blur'
+  },
+  password1: {
+    validator: (rule, value) => {
+      if (showPass.value && !value) {
+        return new Error('请输入新密码')
+      }
+      if (showPass.value && value && value.length < 8) {
+        return new Error('密码至少需要8个字符')
+      }
+      return true
+    },
+    trigger: 'blur'
+  },
+  password2: {
+    validator: (rule, value) => {
+      if (showPass.value && !value) {
+        return new Error('请确认密码')
+      }
+      if (showPass.value && value !== user.password1) {
+        return new Error('两次输入的密码不一致')
+      }
+      return true
+    },
+    trigger: 'blur'
+  },
+  nickname: {
+    validator: (rule, value) => {
+      if (value && value.length < 2) {
+        return new Error('昵称至少需要2个字符')
+      }
+      return true
+    },
+    trigger: 'blur'
+  },
+  kindle_email: {
+    validator: (rule, value) => {
+      if (value) {
+        const re = /^(([^<>()[\]\.,;:\s@"]+(\.[^<>()[\]\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/
+        if (!re.test(value)) {
+          return new Error('邮箱格式不正确')
         }
-        return app.$backend("/user/info?detail=1");
+      }
+      return true
     },
-    head: () => ({
-        title: "用户中心",
-    }),
-    created() {
-        this.init(this.$route);
-    },
-    beforeRouteUpdate(to, from, next) {
-        this.init(to, next);
-    },
-    methods: {
-        valid: function(v) {
-            return v == this.user.password1 || "Password are not same."
-        },
-        save: function() {
-            if ( ! this.$refs.form.validate() ) {
-                return false;
-            }
-            var d = {
-                'password0': this.user.password0,
-                'password1': this.user.password1,
-                'password2': this.user.password2,
-                'nickname': this.user.nickname,
-                'kindle_email': this.user.kindle_email,
-            }
-            this.$backend('/user/update', {
-                method: 'POST',
-                body: JSON.stringify(d),
-            })
-            .then( rsp => {
-                if ( rsp.err != 'ok' ) {
-                    this.failmsg = rsp.msg;
-                } else {
-                    this.$store.commit("navbar", true);
-                    this.$router.push("/");
-                }
-            });
-        },
-        send_active_email: function() {
-            this.$backend('/user/active/send')
-            .then( rsp => {
-                if ( rsp.err == 'ok' ) {
-                    this.$alert("success", "激活邮件已发出！");
-                } else {
-                    this.$alert("danger", rsp.msg);
-                }
-            });
-        },
-        init(route, next) {
-            this.$store.commit('navbar', true);
-            this.$backend("/user/info?detail=1")
-            .then( rsp => {
-                rsp.user.password0 = "";
-                rsp.user.password1 = "";
-                rsp.user.password2 = "";
-                this.user = rsp.user;
-            });
-            if ( next ) next();
-        },
-    },
+    trigger: 'blur'
+  }
 }
+
+// 方法
+const valid = () => {
+  return user.password2 === user.password1 || "两次输入的密码不一致"
+}
+
+const save = async () => {
+  try {
+    // 表单验证
+    await formRef.value?.validate()
+
+    const data = {
+      password0: user.password0,
+      password1: user.password1,
+      password2: user.password2,
+      nickname: user.nickname,
+      kindle_email: user.kindle_email
+    }
+
+    const rsp = await $fetch('/api/user/update', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    })
+
+    if (rsp.err !== 'ok') {
+      message.error(rsp.msg)
+    } else {
+      message.success('保存成功')
+      mainStore.navbar(true)
+      router.push('/')
+    }
+  } catch (error) {
+    console.error('Save user detail error:', error)
+    message.error('保存失败，请稍后再试')
+  }
+}
+
+const sendActiveEmail = async () => {
+  try {
+    const rsp = await $fetch('/api/user/active/send')
+
+    if (rsp.err === 'ok') {
+      message.success('激活邮件已发出！')
+    } else {
+      message.error(rsp.msg)
+    }
+  } catch (error) {
+    console.error('Send active email error:', error)
+    message.error('发送激活邮件失败，请稍后再试')
+  }
+}
+
+const init = async () => {
+  try {
+    mainStore.navbar(true)
+    const rsp = await $fetch('/api/user/info?detail=1')
+
+    rsp.user.password0 = ''
+    rsp.user.password1 = ''
+    rsp.user.password2 = ''
+
+    // 更新用户数据
+    Object.assign(user, rsp.user)
+  } catch (error) {
+    console.error('Init user detail error:', error)
+    message.error('获取用户信息失败')
+  }
+}
+
+// 生命周期
+onMounted(() => {
+  init()
+})
+
+// 设置页面标题
+useHead({
+  title: '用户中心'
+})
 </script>
 
-<style></style>
+<style scoped>
+.user-detail-page {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+.avatar-container {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.avatar-tip {
+  font-size: 0.9rem;
+}
+
+.email-container {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.resend-link {
+  font-size: 0.9rem;
+  color: var(--primary-color);
+}
+
+.password-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.password-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 12px;
+  padding: 12px;
+  background-color: var(--card-color-modal);
+  border-radius: 4px;
+}
+
+.save-button {
+  display: flex;
+  justify-content: center;
+  margin-top: 24px;
+}
+</style>

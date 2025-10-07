@@ -1,66 +1,132 @@
 <template>
-    <div>
-        <v-btn bottom color="pink" dark fab fixed right @click="dialog = !dialog">
-            <v-icon>mdi-upload</v-icon>
-        </v-btn>
-        <v-dialog v-model="dialog" persistent transition="dialog-bottom-transition" width="300">
-            <v-card>
-                <v-toolbar flat dense dark color="primary">
-                    上传书籍
-                    <v-spacer></v-spacer>
-                    <v-btn color="" text @click="dialog = false">关闭</v-btn>
-                </v-toolbar>
-                <v-card-title></v-card-title>
-                <v-card-text>
-                    <p>受限于服务器能力，请勿上传100M的大文件书籍。</p>
-                    <v-form ref="form" @submit="do_upload">
-                        <v-file-input v-model="ebooks" label="请选择要上传的电子书"></v-file-input>
-                    </v-form>
-                </v-card-text>
-                <v-card-actions>
-                    <v-spacer></v-spacer>
-                    <v-btn :loading="loading" color="primary" @click="do_upload">上传</v-btn>
-                    <v-spacer></v-spacer>
-                </v-card-actions>
-            </v-card>
-        </v-dialog>
-    </div>
+  <div>
+    <n-button
+      type="primary"
+      circle
+      size="large"
+      class="upload-button"
+      @click="dialog = true"
+    >
+      <template #icon>
+        <n-icon><UploadIcon /></n-icon>
+      </template>
+    </n-button>
+
+    <n-modal
+      v-model:show="dialog"
+      preset="card"
+      style="max-width: 400px"
+      title="上传书籍"
+      :mask-closable="false"
+    >
+      <template #header-extra>
+        <n-button quaternary circle @click="dialog = false">
+          <template #icon>
+            <n-icon><CloseIcon /></n-icon>
+          </template>
+        </n-button>
+      </template>
+
+      <div class="upload-form">
+        <p>受限于服务器能力，请勿上传100M的大文件书籍。</p>
+        <n-upload
+          v-model:file-list="fileList"
+          :max="1"
+          :default-upload="false"
+          @change="handleFileChange"
+        >
+          <n-button>选择电子书文件</n-button>
+        </n-upload>
+      </div>
+
+      <template #footer>
+        <div class="modal-footer">
+          <n-button @click="dialog = false">取消</n-button>
+          <n-button type="primary" :loading="loading" @click="doUpload">
+            上传
+          </n-button>
+        </div>
+      </template>
+    </n-modal>
+  </div>
 </template>
 
-<script>
-export default {
-    data: () => ({
-        loading: false,
-        dialog: false,
-        ebooks: null,
-    }),
-    methods: {
-        do_upload: function () {
-            this.loading = true;
-            var data = new FormData();
-            data.append("ebook", this.ebooks);
-            this.$backend("/book/upload", {
-                method: 'POST',
-                body: data,
-            })
-                .then(rsp => {
-                    this.dialog = false;
-                    if (rsp.err === 'ok') {
-                        this.$alert("success", "上传成功！", "/book/" + rsp.book_id);
-                        this.$router.push("/book/" + rsp.book_id)
-                    } else if (rsp.err === 'samebook') {
-                        this.$alert("error", rsp.msg, "/book/" + rsp.book_id);
-                        this.$router.push("/book/" + rsp.book_id)
-                    } else {
-                        this.$alert("error", rsp.msg);
-                    }
-                })
-                .finally(() => {
-                    this.loading = false;
-                });
-        },
-    },
+<script setup>
+import { ref } from 'vue'
+import { useMessage } from 'naive-ui'
+import { useNuxtApp } from '#app'
+import { CloudUpload as UploadIcon, Close as CloseIcon } from '@vicons/ionicons5'
 
+const message = useMessage()
+const { $backend } = useNuxtApp()
+const router = useRouter()
+
+// 响应式数据
+const loading = ref(false)
+const dialog = ref(false)
+const fileList = ref([])
+const ebookFile = ref(null)
+
+// 方法
+const handleFileChange = (options) => {
+  if (options.fileList.length > 0) {
+    ebookFile.value = options.fileList[0].file
+  } else {
+    ebookFile.value = null
+  }
+}
+
+const doUpload = async () => {
+  if (!ebookFile.value) {
+    message.error('请选择要上传的电子书文件')
+    return
+  }
+
+  try {
+    loading.value = true
+    const data = new FormData()
+    data.append("ebook", ebookFile.value)
+
+    const rsp = await $backend('/book/upload', {
+      method: 'POST',
+      body: data,
+    })
+
+    dialog.value = false
+    if (rsp.err === 'ok') {
+      message.success('上传成功！')
+      router.push("/book/" + rsp.book_id)
+    } else if (rsp.err === 'samebook') {
+      message.error(rsp.msg)
+      router.push("/book/" + rsp.book_id)
+    } else {
+      message.error(rsp.msg)
+    }
+  } catch (error) {
+    console.error('Upload error:', error)
+    message.error('上传失败')
+  } finally {
+    loading.value = false
+  }
 }
 </script>
 
+<style scoped>
+.upload-button {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 100;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.upload-form {
+  margin: 16px 0;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+</style>

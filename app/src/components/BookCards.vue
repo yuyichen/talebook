@@ -1,95 +1,118 @@
 <template>
-    <v-row>
-    <v-col cols=12 xs=12 sm=6 md=4 v-for="(book,idx) in render_books" :key="idx+'-books-'+book.id" class="book-list-card">
-        <v-card :to="book.href" >
-            <v-row>
-                <v-col cols=3 class='col-book-img'>
-                    <v-img :src="book.img" :aspect-ratio="11/15" ></v-img>
-                </v-col>
-                <v-col cols=9 class='col-book-info'>
-                    <v-card-text class="pb-0" align-left>
-                        <div class="book-title">{{book.title}}</div>
-                        <slot name="introduce" :book="book"></slot>
-                        <div class="book-comments">
-                            <p v-if="book.comments" v-html="book.comments"></p>
-                            <p  v-else>点击浏览详情</p>
-                        </div>
-                    </v-card-text>
-                </v-col>
-            </v-row>
+  <div class="book-cards-container">
+    <n-grid x-gap="12" y-gap="12" cols="1 s:2 m:3">
+      <n-grid-item v-for="(book, idx) in renderBooks" :key="idx + '-books-' + book.id" class="book-list-card">
+        <n-card :bordered="true" class="book-card" clickable @click="$router.push(book.href)">
+          <div class="book-content">
+            <div class="col-book-img">
+              <n-image :src="book.img" :alt="book.title" class="book-image" />
+            </div>
+            <div class="col-book-info">
+              <div class="book-title">{{ book.title }}</div>
+              <slot name="introduce" :book="book"></slot>
+              <div class="book-comments">
+                <p v-if="book.comments" v-html="book.comments"></p>
+                <p v-else>点击浏览详情</p>
+              </div>
+            </div>
+          </div>
+          <template #footer v-if="$slots.actions">
             <slot name="actions" :book="book"></slot>
-        </v-card>
-    </v-col>
-    </v-row>
+          </template>
+        </n-card>
+      </n-grid-item>
+    </n-grid>
+  </div>
 </template>
 
-<script>
-export default {
-    props: {
-        books: Array,
-    },
-    components: {
-    },
-    computed: {
-        render_books: function() {
-            return this.books.map( b => {
-                if ( b['href'] == undefined ) {
-                    b['href'] = "/book/" + b.id;
-                }
-                return b;
-            });
-        },
-    },
-    data: () => {
-        return {
-        }
-    },
-}
+<script setup>
+import { computed } from 'vue'
+
+const props = defineProps({
+  books: {
+    type: Array,
+    default: () => []
+  }
+})
+
+const renderBooks = computed(() => {
+  return props.books.map(book => {
+    if (book['href'] === undefined) {
+      book['href'] = "/book/" + book.id
+    }
+    return book
+  })
+})
 </script>
 
 <style scoped>
-.book-title {
-    display: block;
-    /*height: 1em;*/
-    overflow-y: hidden;
-    display: -webkit-box;
-    -webkit-line-clamp: 1;
-    -webkit-box-orient: vertical;
-    text-overflow: clip;
-    text-align: left;
-    font-weight: bold;
-}
-.book-comments {
-    overflow: hidden;
-    display: -webkit-box;
-    -webkit-line-clamp: 3;
-    -webkit-box-orient: vertical;
-    text-overflow: clip;
-    margin-top: 6px;
-    text-align: left;
-}
-.book-comments p {
-    font-size: small;
-    margin-bottom: 0px;
-}
-.book-list-card .row {
-    margin-bottom: 0px;
-}
-.page-title {
-    font-weight: bold;
-    text-align: left;
-}
-.new-legend {
-    margin-top: 30px;
-    margin-bottom: 20px;
-}
-.col-book-img {
-    padding: 0 0 0 12px;
-}
-.col-book-info {
-    padding: 0;
-    margin-left: -6px;
-    margin-top: -6px;
+.book-cards-container {
+  margin-bottom: 16px;
 }
 
+.book-card {
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.book-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.book-content {
+  display: flex;
+  gap: 12px;
+}
+
+.col-book-img {
+  flex: 0 0 25%;
+}
+
+.col-book-info {
+  flex: 1;
+}
+
+.book-image {
+  width: 100%;
+  aspect-ratio: 11/15;
+  object-fit: cover;
+  border-radius: 4px;
+}
+
+.book-title {
+  display: block;
+  overflow-y: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  text-overflow: clip;
+  text-align: left;
+  font-weight: bold;
+  margin-bottom: 8px;
+}
+
+.book-comments {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  text-overflow: clip;
+  margin-top: 6px;
+  text-align: left;
+}
+
+.book-comments p {
+  font-size: small;
+  margin-bottom: 0px;
+}
+
+.page-title {
+  font-weight: bold;
+  text-align: left;
+}
+
+.new-legend {
+  margin-top: 30px;
+  margin-bottom: 20px;
+}
 </style>

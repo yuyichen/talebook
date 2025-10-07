@@ -1,34 +1,57 @@
 <template>
-    <v-row>
-        <v-col cols=12 class='text-center'>
-            <v-divider class='mt-10 mb-3' ></v-divider>
-            <p class='mb-0 text-center footer-text' v-html="footer_text"></p>
-            <!-- <p>
-            <v-btn small text target="_blank" href="https://github.com/talebook/talebook">Github</v-btn>
-            | <v-btn small text target="_blank" href="https://hub.docker.com/r/talebook/talebook">Docker</v-btn>
-            | <v-btn small text target="_blank" href="http://talebook.org">Project</v-btn>
-            </p> -->
-        </v-col>
-    </v-row>
+  <footer class="app-footer">
+    <n-divider class="divider" />
+    <p class="footer-text" v-html="footerText"></p>
+    <div class="footer-links">
+      <n-button text size="small" tag="a" href="https://github.com/talebook/talebook" target="_blank">
+        Github
+      </n-button>
+      | 
+      <n-button text size="small" tag="a" href="https://hub.docker.com/r/talebook/talebook" target="_blank">
+        Docker
+      </n-button>
+      | 
+      <n-button text size="small" tag="a" href="http://talebook.org" target="_blank">
+        Project
+      </n-button>
+    </div>
+  </footer>
 </template>
 
-<script>
-export default {
-    name: 'AppFooter',
-    computed: {
-        footer_text: function() {
-            if ( this.$store.state.sys.footer != undefined ) {
-                return this.$store.state.sys.footer;
-            }
-            return this.footer;
-        },
-    },
-    data: () => ({
-        footer: "本站基于Calibre构建，感谢开源界的力量。所有资源搜集于互联网，如有侵权请邮件联系。",
-    })
-}
+<script setup>
+import { computed } from 'vue'
+import { useMainStore } from '~/store'
+
+const mainStore = useMainStore()
+
+const footerText = computed(() => {
+  if (mainStore.sys.footer !== undefined) {
+    return mainStore.sys.footer
+  }
+  return "本站基于Calibre构建，感谢开源界的力量。所有资源搜集于互联网，如有侵权请邮件联系。"
+})
 </script>
 
-<style>
+<style scoped>
+.app-footer {
+  padding: 16px 0;
+  text-align: center;
+  margin-top: 24px;
+}
 
+.divider {
+  margin: 24px 0 12px;
+}
+
+.footer-text {
+  margin: 0 0 12px;
+  color: var(--text-color-2);
+}
+
+.footer-links {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+}
 </style>

@@ -1,51 +1,50 @@
 <template>
-  <v-app dark>
-    <h1 v-if="error.statusCode === 404">
-      {{ pageNotFound }}
-    </h1>
-    <h1 v-else>
-      {{ otherError }}
-    </h1>
-    <NuxtLink to="/"> Home page </NuxtLink>
-  </v-app>
+  <div class="error-layout">
+    <n-result
+      :status="error.statusCode === 404 ? '404' : 'error'"
+      :title="error.statusCode === 404 ? pageNotFound : otherError"
+      :description="error.message"
+    >
+      <template #footer>
+        <n-button type="primary" @click="$router.push('/')">
+          返回首页
+        </n-button>
+      </template>
+    </n-result>
+  </div>
 </template>
 
-<script>
-export default {
-  name: "EmptyLayout",
-  layout: "empty",
+<script setup>
+import { computed } from 'vue'
 
-  props: {
-    error: {
-      type: Object,
-      default: null,
-    },
+const props = defineProps({
+  error: {
+    type: Object,
+    default: null,
   },
-  created() {
-    //this.$store.commit("puremode", true);
-  },
+})
 
-  data() {
-    return {
-      pageNotFound: "404 Not Found",
-      otherError: "An error occurred",
-    };
-  },
-  head() {
-    const title = this.error.statusCode === 404 ? this.pageNotFound : this.otherError;
-    return {
-      title,
-    };
-  },
-};
+const pageNotFound = "404 Not Found"
+const otherError = "An error occurred"
+
+// 设置页面标题
+useHead({
+  title: computed(() => props.error.statusCode === 404 ? pageNotFound : otherError)
+})
+
+// 设置页面布局
+definePageMeta({
+  layout: false
+})
 </script>
 
 <style scoped>
-h1 {
-  font-size: 20px;
-}
-.msg {
-  text-align: center;
+.error-layout {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  padding: 24px;
 }
 </style>
 

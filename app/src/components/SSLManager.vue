@@ -1,95 +1,193 @@
 <template>
-    <div>
-        <v-btn dense @click="dialog = !dialog" >
-            <v-icon>mdi-upload</v-icon> 更新SSL证书
-        </v-btn>
-        <v-dialog v-model="dialog" persistent transition="dialog-bottom-transition" width="400">
-            <v-card>
-                <v-toolbar flat dense dark color="primary">
-                    上传SSL证书
-                    <v-spacer></v-spacer>
-                    <v-btn color="" text @click="dialog = false">关闭</v-btn>
-                </v-toolbar>
-                <v-card-title></v-card-title>
-                <v-card-text>
-                    <p>说明文字</p>
-                    <v-form ref="form" @submit="upload_ssl">
-                        <v-file-input v-model="ssl_crt" accept=".crt" label="请选择要上传的证书文件（.crt）"></v-file-input>
-                        <v-file-input v-model="ssl_key" accept=".key" label="请选择要上传的证书私钥（.key）"></v-file-input>
-                    </v-form>
-                </v-card-text>
-                <v-card-actions >
-                    <v-spacer> </v-spacer>
-                    <v-btn :loading="loading" color="primary" @click="upload_ssl">上传SSL证书</v-btn>
-                    <v-spacer> </v-spacer>
-                </v-card-actions>
-            </v-card>
-        </v-dialog>
-    </div>
+  <div>
+    <n-button @click="dialog = true">
+      <template #icon>
+        <n-icon><UploadIcon /></n-icon>
+      </template>
+      更新SSL证书
+    </n-button>
+
+    <n-modal
+      v-model:show="dialog"
+      preset="card"
+      style="max-width: 400px"
+      title="上传SSL证书"
+      :mask-closable="false"
+    >
+      <template #header-extra>
+        <n-button quaternary circle @click="dialog = false">
+          <template #icon>
+            <n-icon><CloseIcon /></n-icon>
+          </template>
+        </n-button>
+      </template>
+
+      <div class="ssl-form">
+        <p>说明文字</p>
+        <n-form ref="formRef" :model="formValue" :rules="rules">
+          <n-form-item label="请选择要上传的证书文件（.crt）" path="sslCrt">
+            <n-upload
+              v-model:file-list="formValue.sslCrt"
+              :max="1"
+              accept=".crt"
+              :default-upload="false"
+              @change="handleCrtChange"
+            >
+              <n-button>选择文件</n-button>
+            </n-upload>
+          </n-form-item>
+
+          <n-form-item label="请选择要上传的证书私钥（.key）" path="sslKey">
+            <n-upload
+              v-model:file-list="formValue.sslKey"
+              :max="1"
+              accept=".key"
+              :default-upload="false"
+              @change="handleKeyChange"
+            >
+              <n-button>选择文件</n-button>
+            </n-upload>
+          </n-form-item>
+        </n-form>
+      </div>
+
+      <template #footer>
+        <div class="modal-footer">
+          <n-button @click="dialog = false">取消</n-button>
+          <n-button type="primary" :loading="loading" @click="uploadSsl">
+            上传SSL证书
+          </n-button>
+        </div>
+      </template>
+    </n-modal>
+  </div>
 </template>
 
-<script>
-export default {
-    name: "ssl-manager",
-    data: () => ({
-        loading: false,
-        dialog: false,
-        ssl_crt: null,
-        ssl_key: null,
-    }),
-    methods: {
-        async check_certs() {
-            var re = {
-                crt: /-----BEGIN CERTIFICATE-----[^ ]*-----END CERTIFICATE-----/gm,
-                key: /-----BEGIN [A-Z]* PRIVATE KEY-----[^ ]*-----END [A-Z]* PRIVATE KEY-----/gm,
-            };
+<script setup>
+import { ref, reactive } from 'vue'
+import { useMessage } from 'naive-ui'
+import { useNuxtApp } from '#app'
+import { CloudUpload as UploadIcon, Close as CloseIcon } from '@vicons/ionicons5'
 
-            var content = await this.ssl_crt.text();
-            if ( ! re.crt.test(content) ) {
-                this.$alert("error", "证书文件(.crt)异常，文件内容不是PEM格式");
-                return false;
-            }
+const message = useMessage()
+const { $backend } = useNuxtApp()
 
-            var content = await this.ssl_key.text();
-            if ( ! re.key.test(content) ) {
-                this.loading = false;
-                this.$alert("error", "私钥文件(.key)异常，文件内容不是PEM格式");
-                return false;
-            }
-            return true;
-        },
+// 响应式数据
+const loading = ref(false)
+const dialog = ref(false)
+const formRef = ref(null)
+const sslCrtFile = ref(null)
+const sslKeyFile = ref(null)
 
-        async upload_ssl() {
-            this.loading = true;
-            var ok = await this.check_certs();
-            
-            if ( !ok ) {
-                this.loading = false;
-                this.dialog = false;
-                return;
-            }
+// 表单数据
+const formValue = reactive({
+  sslCrt: [],
+  sslKey: []
+})
 
-            var data = new FormData();
-            data.append("ssl_crt", this.ssl_crt);
-            data.append("ssl_key", this.ssl_key);
-            this.$backend("/admin/ssl", {
-                method: 'POST',
-                body: data,
-            })
-            .then( rsp => {
-                this.dialog = false;
-                if ( rsp.err == 'ok' ) {
-                    this.$alert("success", "上传成功！");
-                } else {
-                    this.$alert("error", rsp.msg);
-                }
-            })
-            .finally(() => {
-                this.loading = false;
-            });
-        },
-    },
+// 表单验证规则
+const rules = {
+  sslCrt: {
+    required: { message: '请选择证书文件', trigger: 'change' }
+  },
+  sslKey: {
+    required: { message: '请选择私钥文件', trigger: 'change' }
+  }
+}
 
+// 方法
+const handleCrtChange = (options) => {
+  if (options.fileList.length > 0) {
+    sslCrtFile.value = options.fileList[0].file
+  } else {
+    sslCrtFile.value = null
+  }
+}
+
+const handleKeyChange = (options) => {
+  if (options.fileList.length > 0) {
+    sslKeyFile.value = options.fileList[0].file
+  } else {
+    sslKeyFile.value = null
+  }
+}
+
+const checkCerts = async () => {
+  const re = {
+    crt: /-----BEGIN CERTIFICATE-----[^ ]*-----END CERTIFICATE-----/gm,
+    key: /-----BEGIN [A-Z]* PRIVATE KEY-----[^ ]*-----END [A-Z]* PRIVATE KEY-----/gm,
+  }
+
+  if (!sslCrtFile.value) {
+    message.error('请选择证书文件')
+    return false
+  }
+
+  const crtContent = await sslCrtFile.value.text()
+  if (!re.crt.test(crtContent)) {
+    message.error('证书文件(.crt)异常，文件内容不是PEM格式')
+    return false
+  }
+
+  if (!sslKeyFile.value) {
+    message.error('请选择私钥文件')
+    return false
+  }
+
+  const keyContent = await sslKeyFile.value.text()
+  if (!re.key.test(keyContent)) {
+    message.error('私钥文件(.key)异常，文件内容不是PEM格式')
+    return false
+  }
+
+  return true
+}
+
+const uploadSsl = async () => {
+  try {
+    // 表单验证
+    await formRef.value?.validate()
+
+    loading.value = true
+    const ok = await checkCerts()
+
+    if (!ok) {
+      loading.value = false
+      return
+    }
+
+    const data = new FormData()
+    data.append("ssl_crt", sslCrtFile.value)
+    data.append("ssl_key", sslKeyFile.value)
+
+    const rsp = await $backend('/admin/ssl', {
+      method: 'POST',
+      body: data,
+    })
+
+    dialog.value = false
+    if (rsp.err === 'ok') {
+      message.success('上传成功！')
+    } else {
+      message.error(rsp.msg)
+    }
+  } catch (error) {
+    console.error('Upload SSL error:', error)
+    message.error('上传失败')
+  } finally {
+    loading.value = false
+  }
 }
 </script>
 
+<style scoped>
+.ssl-form {
+  margin: 16px 0;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+</style>
