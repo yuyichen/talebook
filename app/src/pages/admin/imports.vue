@@ -103,7 +103,7 @@ import {
   Refresh as RefreshIcon, 
   Search as SearchIcon,
   Download as ImportIcon,
-  Delete as DeleteIcon
+  Trash as DeleteIcon
 } from '@vicons/ionicons5'
 import { useNuxtApp } from '#app'
 
