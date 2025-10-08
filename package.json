@@ -1,7 +1,0 @@
-{
-  "dependencies": {
-    "@vicons/ionicons5": "^0.13.0",
-    "pinia": "^3.0.3",
-    "vue3-cookies": "^1.0.6"
-  }
-}
