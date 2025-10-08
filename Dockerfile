@@ -1,7 +1,7 @@
 
 # ----------------------------------------
 # 第一阶段，拉取 node 基础镜像并安装依赖，执行构建
-FROM node:16-alpine AS builder
+FROM node:23-alpine AS builder
 ARG BUILD_COUNTRY=""
 
 WORKDIR /build
