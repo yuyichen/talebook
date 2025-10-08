@@ -20,7 +20,7 @@ RUN npm run build
 RUN ls -al
 RUN cp -r .nuxt node_modules package* /app-ssr/
 RUN npm run generate
-RUN cp -r .output public nuxt.config.js package* /app-static/
+RUN cp -r .output public nuxt.config.js package* /app-static/ && cd /app-static && npm ci --production
 
 
 # ----------------------------------------
