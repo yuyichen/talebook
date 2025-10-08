@@ -20,7 +20,7 @@ RUN npm run build
 RUN ls -al
 RUN cp -r .nuxt node_modules package* /app-ssr/
 RUN npm run generate
-RUN cp -r dist nuxt.config.js package* /app-static/
+RUN cp -r .output public nuxt.config.js package* /app-static/
 
 
 # ----------------------------------------
@@ -97,7 +97,7 @@ COPY conf/nginx/ssl.* /data/books/ssl/
 COPY conf/nginx/talebook.conf /etc/nginx/conf.d/
 COPY conf/supervisor/talebook.conf /etc/supervisor/conf.d/
 COPY --from=builder /app-static/ /var/www/talebook/app/
-COPY --from=builder /app-static/dist/logo/ /data/books/logo/
+COPY --from=builder /app-static/.output/public/logo/ /data/books/logo/
 
 RUN rm -f /etc/nginx/sites-enabled/default /var/www/html -rf && \
     cd /var/www/talebook/ && \
