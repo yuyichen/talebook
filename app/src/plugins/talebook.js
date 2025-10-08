@@ -56,8 +56,8 @@ export default defineNuxtPlugin({
           };
         }
       } else {
-        // server = window.location.origin;
-        server = "http://localhost:1000";
+        server = window.location.origin;
+        // server = "http://localhost:1000";
       }
 
       var full_url = server + "/api" + url;
