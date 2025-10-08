@@ -19,7 +19,7 @@ RUN mkdir -p /app-ssr/ /app-static/
 RUN npm run build
 RUN ls -al
 RUN cp -r .nuxt node_modules package* /app-ssr/
-RUN npm run build-spa
+RUN npm run generate
 RUN cp -r dist nuxt.config.js package* /app-static/
 
 
