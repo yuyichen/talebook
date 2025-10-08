@@ -128,7 +128,7 @@ FROM production AS production-ssr
 
 # intall nodejs for nuxtjs server side render
 RUN apt-get update -y && \
-    curl -fsSL https://deb.nodesource.com/setup_16.x | bash - && \
+    curl -fsSL https://deb.nodesource.com/setup_23.x | bash - && \
     apt-get install -y nodejs && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
