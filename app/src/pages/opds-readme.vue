@@ -28,19 +28,19 @@
         </n-card>
 
         <n-card title="配置指南" :bordered="false">
-          <n-ol>
-            <n-ol-item>在阅读器中添加新的 OPDS 书库</n-ol-item>
-            <n-ol-item>输入您的 OPDS 链接</n-ol-item>
-            <n-ol-item>根据提示完成认证（如果需要）</n-ol-item>
-            <n-ol-item>开始浏览和阅读您的电子书</n-ol-item>
-          </n-ol>
+          <ol>
+            <li>在阅读器中添加新的 OPDS 书库</li>
+            <li>输入您的 OPDS 链接</li>
+            <li>根据提示完成认证（如果需要）</li>
+            <li>开始浏览和阅读您的电子书</li>
+          </ol>
 
           <h3>请注意</h3>
           <p>因为静读天下APP不支持cookie登录，因此需要做如下配置：</p>
-          <n-ol>
-            <n-ol-item>关闭「私人图书馆」模式。</n-ol-item>
-            <n-ol-item>打开「允许任意下载」（访客无需注册或登录）</n-ol-item>
-          </n-ol>
+          <ol>
+            <li>关闭「私人图书馆」模式。</li>
+            <li>打开「允许任意下载」（访客无需注册或登录）</li>
+          </ol>
         </n-card>
       </n-space>
     </n-card>
