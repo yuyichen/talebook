@@ -60,7 +60,7 @@ export default defineNuxtConfig({
 
   // 构建配置
   build: {
-    transpile: ["naive-ui"],
+    transpile: ["naive-ui", "vueuc"],
   },
 
   // Google字体配置
