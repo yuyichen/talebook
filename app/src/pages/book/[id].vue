@@ -146,14 +146,22 @@
                 推送
               </n-button>
 
-              <nuxt-link :to="`/book/${book.id}/readtxt`" target="_blank" class="action-button">
+              <a v-if="isTxt" :to="`/book/${book.id}/readtxt`" target="_blank" class="action-button">
+                <n-button type="primary">
+                  <template #icon>
+                    <n-icon><ReadIcon /></n-icon>
+                  </template>
+                  阅读(TXT)
+                </n-button>
+              </a>
+              <a v-else :href="`/read/${book.id}`" target="_blank" class="action-button">
                 <n-button type="primary">
                   <template #icon>
                     <n-icon><ReadIcon /></n-icon>
                   </template>
                   阅读
                 </n-button>
-              </nuxt-link>
+              </a>
 
               <template v-if="book.is_owner">
                 <n-dropdown
@@ -275,9 +283,12 @@
                   <n-icon><ReadIcon /></n-icon>
                 </n-avatar>
               </template>
-              <nuxt-link :to="`/book/${book.id}/readtxt`" target="_blank" style="text-decoration: none; color: inherit;">
+              <a v-if="isTxt" :to="`/book/${book.id}/readtxt`" target="_blank" style="text-decoration: none; color: inherit;">
+                <n-thing title="在线阅读(TXT)" />
+              </a>
+              <a v-else :href="`/read/${book.id}`" target="_blank" style="text-decoration: none; color: inherit;">
                 <n-thing title="在线阅读" />
-              </nuxt-link>
+              </a>
               <template #suffix>
                 <n-icon><ArrowRightIcon /></n-icon>
               </template>
@@ -400,11 +411,6 @@ const pubYear = computed(() => {
     return "N/A"
   }
   return book.value.pubdate.split("-")[0]
-})
-
-const tiny = computed(() => {
-  // 在 Naive UI 中，可以使用响应式断点
-  return false
 })
 
 const emailOptions = computed(() => {
