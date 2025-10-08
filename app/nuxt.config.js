@@ -53,7 +53,7 @@ export default defineNuxtConfig({
 
   // 模块配置
   modules: [
-    "@nuxtjs/google-fonts",
+    // "@nuxtjs/google-fonts",
     // "@nuxtjs/google-analytics", // 暂时注释掉，因为可能与 Nuxt 3 不兼容
     "nuxt-icon",
   ],
@@ -64,9 +64,9 @@ export default defineNuxtConfig({
   },
 
   // Google字体配置
-  googleFonts: {
-    download: true,
-  },
+  // googleFonts: {
+  //   download: true,
+  // },
 
   // 运行时配置
   runtimeConfig: {

@@ -24,8 +24,6 @@
   },
   "devDependencies": {
     "@nuxt/devtools": "^0.7.0",
-    "@nuxtjs/google-analytics": "^2.4.0",
-    "@nuxtjs/google-fonts": "^3.0.0",
     "@vitejs/plugin-vue": "^4.2.0",
     "nuxt-icon": "^0.4.0",
     "unplugin-auto-import": "^0.15.0",
