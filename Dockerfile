@@ -97,7 +97,7 @@ COPY conf/nginx/ssl.* /data/books/ssl/
 COPY conf/nginx/talebook.conf /etc/nginx/conf.d/
 COPY conf/supervisor/talebook.conf /etc/supervisor/conf.d/
 COPY --from=builder /app-static/ /var/www/talebook/app/
-COPY --from=builder /app-static/.output/public/logo/ /data/books/logo/
+COPY --from=builder /app-static/public/logo/ /data/books/logo/
 
 RUN rm -f /etc/nginx/sites-enabled/default /var/www/html -rf && \
     cd /var/www/talebook/ && \
@@ -109,8 +109,8 @@ RUN rm -f /etc/nginx/sites-enabled/default /var/www/html -rf && \
     python3 server.py --update-config  && \
     rm -f webserver/*.pyc && \
     rm -rf app/src && \
-    rm -rf app/dist/logo && \
-    ln -s /data/books/logo app/dist/logo && \
+    rm -rf app/public/logo && \
+    ln -s /data/books/logo app/public/logo && \
     mkdir -p /prebuilt/ && \
     mv /data/* /prebuilt/ && \
     chmod +x /var/www/talebook/docker/start.sh
