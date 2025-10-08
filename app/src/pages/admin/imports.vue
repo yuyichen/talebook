@@ -102,7 +102,7 @@ import { useMessage } from 'naive-ui'
 import { 
   Refresh as RefreshIcon, 
   Search as SearchIcon,
-  Import as ImportIcon,
+  Download as ImportIcon,
   Delete as DeleteIcon
 } from '@vicons/ionicons5'
 import { useNuxtApp } from '#app'
